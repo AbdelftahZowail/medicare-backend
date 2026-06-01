@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "mGuoJSMSalP+EOi1bY3+r6Rfxadki+M0otTAurHgofs=",
+  "Source": "MedicalApp.API",
+  "BasePath": "_content/MedicalApp.API",
+  "Mode": "Default",
+  "ManifestType": "Publish",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
