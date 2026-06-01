@@ -54,7 +54,7 @@ builder.Services.AddAuthentication(options =>
             var result = System.Text.Json.JsonSerializer.Serialize(new
             {
                 isSuccess = false,
-                message = "غير مصرح لك بالوصول، يرجى تسجيل الدخول",
+                message = "You are not authorized to access this resource. Please sign in.",
                 statusCode = 401
             });
             return context.Response.WriteAsync(result);
@@ -66,7 +66,7 @@ builder.Services.AddAuthentication(options =>
             var result = System.Text.Json.JsonSerializer.Serialize(new
             {
                 isSuccess = false,
-                message = "ليس لديك صلاحية للوصول إلى هذا المورد",
+                message = "You do not have permission to access this resource",
                 statusCode = 403
             });
             return context.Response.WriteAsync(result);
@@ -187,19 +187,17 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
-// Auto-create database for testing and Seed Mock Data
+// Auto-create database for development
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     try
     {
         db.Database.EnsureCreated();
-        // Insert Mock Egyptian Data (if DB is empty)
-        await MedicalApp.API.Data.DbSeeder.SeedAsync(db);
     }
     catch (Exception ex)
     {
-        Console.WriteLine("Database creation/seeding failed: " + ex.Message);
+        Console.WriteLine("Database creation failed: " + ex.Message);
     }
 }
 

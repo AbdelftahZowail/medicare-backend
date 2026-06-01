@@ -22,7 +22,7 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(p => p.UserId == userId);
 
             if (patient == null)
-                return ApiResponse<PatientProfileDto>.Failure("الملف الشخصي غير موجود", 404);
+                return ApiResponse<PatientProfileDto>.Failure("Profile not found", 404);
 
             return ApiResponse<PatientProfileDto>.Success(MapToDto(patient));
         }
@@ -34,7 +34,7 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(p => p.UserId == userId);
 
             if (patient == null)
-                return ApiResponse<PatientProfileDto>.Failure("الملف الشخصي غير موجود", 404);
+                return ApiResponse<PatientProfileDto>.Failure("Profile not found", 404);
 
             // Update user fields
             if (!string.IsNullOrEmpty(dto.FullName)) patient.User.FullName = dto.FullName;
@@ -56,7 +56,7 @@ namespace MedicalApp.API.Services.Implementations
             _unitOfWork.Patients.Update(patient);
             await _unitOfWork.CompleteAsync();
 
-            return ApiResponse<PatientProfileDto>.Success(MapToDto(patient), "تم تحديث الملف الشخصي بنجاح");
+            return ApiResponse<PatientProfileDto>.Success(MapToDto(patient), "Profile updated successfully");
         }
 
         private static PatientProfileDto MapToDto(Models.Entities.Patient patient) => new()
@@ -82,11 +82,11 @@ namespace MedicalApp.API.Services.Implementations
         {
             var patient = await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == userId);
             if (patient == null)
-                return ApiResponse<bool>.Failure("المريض غير موجود", 404);
+                return ApiResponse<bool>.Failure("Patient not found", 404);
 
             var doctorExists = await _unitOfWork.Doctors.AnyAsync(d => d.Id == doctorId);
             if (!doctorExists)
-                return ApiResponse<bool>.Failure("الطبيب غير موجود", 404);
+                return ApiResponse<bool>.Failure("Doctor not found", 404);
 
             var favorite = await _unitOfWork.PatientFavorites.Query()
                 .FirstOrDefaultAsync(pf => pf.PatientId == patient.Id && pf.DoctorId == doctorId);
@@ -95,7 +95,7 @@ namespace MedicalApp.API.Services.Implementations
             {
                 _unitOfWork.PatientFavorites.Remove(favorite);
                 await _unitOfWork.CompleteAsync();
-                return ApiResponse<bool>.Success(false, "تم إزالة الطبيب من المفضلة");
+                return ApiResponse<bool>.Success(false, "Doctor removed from favorites");
             }
             else
             {
@@ -106,7 +106,7 @@ namespace MedicalApp.API.Services.Implementations
                 };
                 await _unitOfWork.PatientFavorites.AddAsync(newFavorite);
                 await _unitOfWork.CompleteAsync();
-                return ApiResponse<bool>.Success(true, "تم إضافة الطبيب إلى المفضلة");
+                return ApiResponse<bool>.Success(true, "Doctor added to favorites");
             }
         }
 
@@ -141,12 +141,12 @@ namespace MedicalApp.API.Services.Implementations
                 })
                 .ToListAsync();
 
-            return ApiResponse<List<PatientProfileDto>>.Success(patients, "تم استرجاع نتائج البحث بنجاح");
+            return ApiResponse<List<PatientProfileDto>>.Success(patients, "Search results retrieved successfully");
         }
         public async Task<ApiResponse<List<FamilyMemberDto>>> GetFamilyMembersAsync(int userId)
         {
             var patient = await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == userId);
-            if (patient == null) return ApiResponse<List<FamilyMemberDto>>.Failure("المريض غير موجود", 404);
+            if (patient == null) return ApiResponse<List<FamilyMemberDto>>.Failure("Patient not found", 404);
 
             var members = await _unitOfWork.FamilyMembers.Query()
                 .Where(fm => fm.PatientId == patient.Id)
@@ -170,7 +170,7 @@ namespace MedicalApp.API.Services.Implementations
         public async Task<ApiResponse<FamilyMemberDto>> AddFamilyMemberAsync(int userId, CreateFamilyMemberDto dto)
         {
             var patient = await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == userId);
-            if (patient == null) return ApiResponse<FamilyMemberDto>.Failure("المريض غير موجود", 404);
+            if (patient == null) return ApiResponse<FamilyMemberDto>.Failure("Patient not found", 404);
 
             var newMember = new Models.Entities.FamilyMember
             {
@@ -202,23 +202,23 @@ namespace MedicalApp.API.Services.Implementations
                 ChronicDiseases = newMember.ChronicDiseases
             };
 
-            return ApiResponse<FamilyMemberDto>.Success(resultDto, "تم إضافة فرد العائلة بنجاح");
+            return ApiResponse<FamilyMemberDto>.Success(resultDto, "Family member added successfully");
         }
 
         public async Task<ApiResponse<bool>> RemoveFamilyMemberAsync(int userId, int memberId)
         {
             var patient = await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == userId);
-            if (patient == null) return ApiResponse<bool>.Failure("المريض غير موجود", 404);
+            if (patient == null) return ApiResponse<bool>.Failure("Patient not found", 404);
 
             var member = await _unitOfWork.FamilyMembers.Query()
                 .FirstOrDefaultAsync(fm => fm.Id == memberId && fm.PatientId == patient.Id);
 
-            if (member == null) return ApiResponse<bool>.Failure("فرد العائلة غير موجود أو لا تملك صلاحية حذفه", 404);
+            if (member == null) return ApiResponse<bool>.Failure("Family member not found or you do not have permission to delete", 404);
 
             _unitOfWork.FamilyMembers.Remove(member);
             await _unitOfWork.CompleteAsync();
 
-            return ApiResponse<bool>.Success(true, "تم حذف فرد العائلة بنجاح");
+            return ApiResponse<bool>.Success(true, "Family member deleted successfully");
         }
     }
 }

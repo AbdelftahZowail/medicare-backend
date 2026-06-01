@@ -13,10 +13,7 @@ namespace MedicalApp.API.Helpers
         public List<string>? Errors { get; set; }
         public int StatusCode { get; set; }
 
-        /// <summary>
-        /// Creates a success response.
-        /// </summary>
-        public static ApiResponse<T> Success(T data, string message = "تمت العملية بنجاح", int statusCode = 200)
+        public static ApiResponse<T> Success(T data, string message = "Operation completed successfully", int statusCode = 200)
         {
             return new ApiResponse<T>
             {
@@ -27,9 +24,6 @@ namespace MedicalApp.API.Helpers
             };
         }
 
-        /// <summary>
-        /// Creates a failure response.
-        /// </summary>
         public static ApiResponse<T> Failure(string message, int statusCode = 400, List<string>? errors = null)
         {
             return new ApiResponse<T>
@@ -42,12 +36,9 @@ namespace MedicalApp.API.Helpers
         }
     }
 
-    /// <summary>
-    /// Non-generic version for responses without data.
-    /// </summary>
     public class ApiResponse : ApiResponse<object>
     {
-        public static ApiResponse Success(string message = "تمت العملية بنجاح", int statusCode = 200)
+        public static ApiResponse Success(string message = "Operation completed successfully", int statusCode = 200)
         {
             return new ApiResponse
             {

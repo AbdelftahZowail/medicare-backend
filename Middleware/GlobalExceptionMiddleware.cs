@@ -41,13 +41,13 @@ namespace MedicalApp.API.Middleware
                 UnauthorizedAccessException => new ApiResponse
                 {
                     IsSuccess = false,
-                    Message = "غير مصرح لك بالوصول",
+                    Message = "You are not authorized to access this resource",
                     StatusCode = (int)HttpStatusCode.Unauthorized
                 },
                 KeyNotFoundException => new ApiResponse
                 {
                     IsSuccess = false,
-                    Message = "العنصر المطلوب غير موجود",
+                    Message = "The requested item was not found",
                     StatusCode = (int)HttpStatusCode.NotFound
                 },
                 ArgumentException argEx => new ApiResponse
@@ -65,7 +65,7 @@ namespace MedicalApp.API.Middleware
                 _ => new ApiResponse
                 {
                     IsSuccess = false,
-                    Message = "حدث خطأ غير متوقع في الخادم",
+                    Message = "An unexpected server error occurred",
                     StatusCode = (int)HttpStatusCode.InternalServerError,
                     Errors = new List<string> { exception.Message }
                 }

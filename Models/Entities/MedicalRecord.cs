@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MedicalApp.API.Models.Entities
 {
-    /// <summary>
-    /// Medical record created by a Doctor for a Patient after an appointment.
-    /// </summary>
     public class MedicalRecord : BaseEntity
     {
         [Required]

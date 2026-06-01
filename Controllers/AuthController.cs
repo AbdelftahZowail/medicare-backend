@@ -50,9 +50,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Login with phone number and password.
-        /// </summary>
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
@@ -60,9 +57,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Refresh access token using a refresh token.
-        /// </summary>
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto dto)
         {
@@ -91,9 +85,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Verify OTP code.
-        /// </summary>
         [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto dto)
         {
@@ -101,9 +92,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Reset password with verified OTP.
-        /// </summary>
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
         {

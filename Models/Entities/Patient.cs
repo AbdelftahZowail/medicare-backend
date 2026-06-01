@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MedicalApp.API.Models.Entities
 {
-    /// <summary>
-    /// Patient profile linked to a User.
-    /// </summary>
     public class Patient : BaseEntity
     {
         [Required]

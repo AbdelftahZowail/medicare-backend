@@ -5,13 +5,13 @@ namespace MedicalApp.API.DTOs.Appointment
 {
     public class CreateAppointmentDto
     {
-        [Required(ErrorMessage = "معرف الطبيب مطلوب")]
+        [Required(ErrorMessage = "Doctor ID is required")]
         public int DoctorId { get; set; }
 
-        [Required(ErrorMessage = "تاريخ الموعد مطلوب")]
+        [Required(ErrorMessage = "Appointment date is required")]
         public DateTime AppointmentDate { get; set; }
 
-        [Required(ErrorMessage = "وقت البدء مطلوب")]
+        [Required(ErrorMessage = "Start time is required")]
         public TimeSpan StartTime { get; set; }
 
         [MaxLength(500)]
@@ -22,13 +22,13 @@ namespace MedicalApp.API.DTOs.Appointment
 
     public class ClinicCreateAppointmentDto
     {
-        [Required(ErrorMessage = "معرف الطبيب مطلوب")]
+        [Required(ErrorMessage = "Doctor ID is required")]
         public int DoctorId { get; set; }
 
-        [Required(ErrorMessage = "تاريخ الموعد مطلوب")]
+        [Required(ErrorMessage = "Appointment date is required")]
         public DateTime AppointmentDate { get; set; }
 
-        [Required(ErrorMessage = "وقت البدء مطلوب")]
+        [Required(ErrorMessage = "Start time is required")]
         public TimeSpan StartTime { get; set; }
 
         public int? PatientId { get; set; }
@@ -95,7 +95,7 @@ namespace MedicalApp.API.DTOs.Appointment
 
     public class CancelAppointmentDto
     {
-        [Required(ErrorMessage = "سبب الإلغاء مطلوب")]
+        [Required(ErrorMessage = "Cancellation reason is required")]
         [MaxLength(500)]
         public string Reason { get; set; } = string.Empty;
     }
@@ -108,10 +108,10 @@ namespace MedicalApp.API.DTOs.Appointment
 
     public class RescheduleAppointmentDto
     {
-        [Required(ErrorMessage = "تاريخ الموعد الجديد مطلوب")]
+        [Required(ErrorMessage = "New appointment date is required")]
         public DateTime AppointmentDate { get; set; }
 
-        [Required(ErrorMessage = "وقت البدء الجديد مطلوب")]
+        [Required(ErrorMessage = "New start time is required")]
         public TimeSpan StartTime { get; set; }
     }
 

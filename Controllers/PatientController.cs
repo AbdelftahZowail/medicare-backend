@@ -61,9 +61,6 @@ namespace MedicalApp.API.Controllers
 
         // ===== Family Members =====
 
-        /// <summary>
-        /// Get all family members for the current patient.
-        /// </summary>
         [Authorize(Roles = "Patient")]
         [HttpGet("family-members")]
         public async Task<IActionResult> GetFamilyMembers()
@@ -72,9 +69,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Add a new family member for the current patient.
-        /// </summary>
         [Authorize(Roles = "Patient")]
         [HttpPost("family-members")]
         public async Task<IActionResult> AddFamilyMember([FromBody] CreateFamilyMemberDto dto)
@@ -83,9 +77,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Remove a family member from the current patient's account.
-        /// </summary>
         [Authorize(Roles = "Patient")]
         [HttpDelete("family-members/{memberId}")]
         public async Task<IActionResult> RemoveFamilyMember(int memberId)

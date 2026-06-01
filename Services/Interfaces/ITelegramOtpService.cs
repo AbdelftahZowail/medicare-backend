@@ -4,14 +4,8 @@ namespace MedicalApp.API.Services.Interfaces
 {
     public interface ITelegramOtpService
     {
-        /// <summary>
-        /// Sends an OTP code to a user's Telegram Chat.
-        /// </summary>
         Task<ApiResponse<bool>> SendOtpAsync(string phoneNumber, string otpCode);
 
-        /// <summary>
-        /// Sends a custom notification message to a user's Telegram Chat.
-        /// </summary>
         Task<ApiResponse<bool>> SendNotificationAsync(string phoneNumber, string message);
 
         /// <summary>

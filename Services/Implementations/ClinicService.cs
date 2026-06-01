@@ -55,7 +55,7 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(c => c.Id == clinicId);
 
             if (clinic == null)
-                return ApiResponse<ClinicDto>.Failure("العيادة غير موجودة", 404);
+                return ApiResponse<ClinicDto>.Failure("Clinic not found", 404);
 
             return ApiResponse<ClinicDto>.Success(MapToDto(clinic));
         }
@@ -64,7 +64,7 @@ namespace MedicalApp.API.Services.Implementations
         {
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user == null || user.Role != UserRole.ClinicAdmin)
-                return ApiResponse<ClinicDto>.Failure("غير مصرح لك بإنشاء عيادة");
+                return ApiResponse<ClinicDto>.Failure("You are not authorized to create a clinic");
 
             var clinic = new Models.Entities.Clinic
             {
@@ -88,13 +88,13 @@ namespace MedicalApp.API.Services.Implementations
             {
                 UserId = userId,
                 ClinicId = clinic.Id,
-                Position = "مدير العيادة"
+                Position = "Clinic Manager"
             };
-            
+
             await _unitOfWork.ClinicAdmins.AddAsync(clinicAdmin);
             await _unitOfWork.CompleteAsync();
 
-            return ApiResponse<ClinicDto>.Success(MapToDto(clinic), "تم إنشاء العيادة بنجاح", 201);
+            return ApiResponse<ClinicDto>.Success(MapToDto(clinic), "Clinic created successfully", 201);
         }
 
         public async Task<ApiResponse<ClinicDto>> UpdateClinicAsync(int clinicId, int userId, UpdateClinicDto dto)
@@ -103,14 +103,14 @@ namespace MedicalApp.API.Services.Implementations
                 .AnyAsync(ca => ca.ClinicId == clinicId && ca.UserId == userId);
 
             if (!isAdmin)
-                return ApiResponse<ClinicDto>.Failure("غير مصرح لك بتعديل هذه العيادة", 403);
+                return ApiResponse<ClinicDto>.Failure("You are not authorized to update this clinic", 403);
 
             var clinic = await _unitOfWork.Clinics.Query()
                 .Include(c => c.DoctorClinics)
                 .FirstOrDefaultAsync(c => c.Id == clinicId);
 
             if (clinic == null)
-                return ApiResponse<ClinicDto>.Failure("العيادة غير موجودة", 404);
+                return ApiResponse<ClinicDto>.Failure("Clinic not found", 404);
 
             if (!string.IsNullOrEmpty(dto.Name)) clinic.Name = dto.Name;
             if (dto.FacilityId != null) clinic.FacilityId = dto.FacilityId;
@@ -127,7 +127,7 @@ namespace MedicalApp.API.Services.Implementations
             _unitOfWork.Clinics.Update(clinic);
             await _unitOfWork.CompleteAsync();
 
-            return ApiResponse<ClinicDto>.Success(MapToDto(clinic), "تم تحديث بيانات العيادة بنجاح");
+            return ApiResponse<ClinicDto>.Success(MapToDto(clinic), "Clinic details updated successfully");
         }
 
         private static ClinicDto MapToDto(Models.Entities.Clinic clinic) => new()
@@ -155,7 +155,7 @@ namespace MedicalApp.API.Services.Implementations
             var admin = await _unitOfWork.ClinicAdmins.Query()
                 .FirstOrDefaultAsync(ca => ca.UserId == clinicAdminUserId);
             if (admin == null)
-                return ApiResponse<List<DoctorListItemDto>>.Failure("غير مصرح لك بجلب أطباء العيادة كمسؤول", 403);
+                return ApiResponse<List<DoctorListItemDto>>.Failure("You are not authorized to fetch clinic doctors as an admin", 403);
 
             int clinicId = admin.ClinicId;
 
@@ -177,7 +177,7 @@ namespace MedicalApp.API.Services.Implementations
                 })
                 .ToListAsync();
 
-            return ApiResponse<List<DoctorListItemDto>>.Success(doctors, "تم استرجاع أطباء العيادة بنجاح");
+            return ApiResponse<List<DoctorListItemDto>>.Success(doctors, "Clinic doctors retrieved successfully");
         }
 
         public async Task<ApiResponse<ClinicDto>> GetClinicProfileAsync(int clinicAdminUserId)
@@ -185,7 +185,7 @@ namespace MedicalApp.API.Services.Implementations
             var admin = await _unitOfWork.ClinicAdmins.Query()
                 .FirstOrDefaultAsync(ca => ca.UserId == clinicAdminUserId);
             if (admin == null)
-                return ApiResponse<ClinicDto>.Failure("غير مصرح لك بجلب بيانات العيادة كمسؤول", 403);
+                return ApiResponse<ClinicDto>.Failure("You are not authorized to fetch clinic details as an admin", 403);
 
             return await GetClinicByIdAsync(admin.ClinicId);
         }
@@ -195,7 +195,7 @@ namespace MedicalApp.API.Services.Implementations
             var admin = await _unitOfWork.ClinicAdmins.Query()
                 .FirstOrDefaultAsync(ca => ca.UserId == clinicAdminUserId);
             if (admin == null)
-                return ApiResponse<ClinicDto>.Failure("غير مصرح لك بتعديل بيانات العيادة كمسؤول", 403);
+                return ApiResponse<ClinicDto>.Failure("You are not authorized to update clinic details as an admin", 403);
 
             return await UpdateClinicAsync(admin.ClinicId, clinicAdminUserId, dto);
         }
@@ -206,14 +206,14 @@ namespace MedicalApp.API.Services.Implementations
             var admin = await _unitOfWork.ClinicAdmins.Query()
                 .FirstOrDefaultAsync(ca => ca.UserId == clinicAdminUserId);
             if (admin == null)
-                return ApiResponse<ScannedDoctorDto>.Failure("غير مصرح لك بمسح الرمز كمسؤول", 403);
+                return ApiResponse<ScannedDoctorDto>.Failure("You are not authorized to scan the code as an admin", 403);
 
             var doctor = await _unitOfWork.Doctors.Query()
                 .Include(d => d.User)
                 .FirstOrDefaultAsync(d => d.QrCodeKey == qrCodeKey);
 
             if (doctor == null)
-                return ApiResponse<ScannedDoctorDto>.Failure("الطبيب غير مسجل في النظام", 404);
+                return ApiResponse<ScannedDoctorDto>.Failure("Doctor is not registered in the system", 404);
 
             var isRegistered = await _unitOfWork.DoctorClinics.Query()
                 .AnyAsync(dc => dc.ClinicId == admin.ClinicId && dc.DoctorId == doctor.Id && dc.IsActive);
@@ -230,7 +230,7 @@ namespace MedicalApp.API.Services.Implementations
                 IsAlreadyRegisteredInClinic = isRegistered
             };
 
-            return ApiResponse<ScannedDoctorDto>.Success(dto, "تم قراءة بيانات الطبيب بنجاح");
+            return ApiResponse<ScannedDoctorDto>.Success(dto, "Doctor details read successfully");
         }
 
         public async Task<ApiResponse<ClinicDoctorDetailsDto>> RegisterClinicDoctorAsync(int clinicAdminUserId, UpdateClinicDoctorDto dto)
@@ -238,7 +238,7 @@ namespace MedicalApp.API.Services.Implementations
             var admin = await _unitOfWork.ClinicAdmins.Query()
                 .FirstOrDefaultAsync(ca => ca.UserId == clinicAdminUserId);
             if (admin == null)
-                return ApiResponse<ClinicDoctorDetailsDto>.Failure("غير مصرح لك بإضافة طبيب كمسؤول", 403);
+                return ApiResponse<ClinicDoctorDetailsDto>.Failure("You are not authorized to add a doctor as an admin", 403);
 
             var existingLink = await _unitOfWork.DoctorClinics.Query()
                 .FirstOrDefaultAsync(dc => dc.ClinicId == admin.ClinicId && dc.DoctorId == dto.DoctorId);
@@ -252,7 +252,7 @@ namespace MedicalApp.API.Services.Implementations
                     .FirstOrDefaultAsync(d => d.Id == dto.DoctorId);
 
                 if (doctor == null)
-                    return ApiResponse<ClinicDoctorDetailsDto>.Failure("الطبيب غير موجود في النظام", 404);
+                    return ApiResponse<ClinicDoctorDetailsDto>.Failure("Doctor is not found in the system", 404);
 
                 existingLink.IsActive = true;
                 existingLink.ConsultationFee = dto.ConsultationFee;
@@ -263,14 +263,14 @@ namespace MedicalApp.API.Services.Implementations
             else
             {
                 if (string.IsNullOrEmpty(dto.QrCodeKey))
-                    return ApiResponse<ClinicDoctorDetailsDto>.Failure("يرجى توفير مفتاح رمز الاستجابة السريعة (QR Code Key) لتسجيل طبيب جديد", 400);
+                    return ApiResponse<ClinicDoctorDetailsDto>.Failure("Please provide the QR code key to register a new doctor", 400);
 
                 doctor = await _unitOfWork.Doctors.Query()
                     .Include(d => d.User)
                     .FirstOrDefaultAsync(d => d.Id == dto.DoctorId && d.QrCodeKey == dto.QrCodeKey);
 
                 if (doctor == null)
-                    return ApiResponse<ClinicDoctorDetailsDto>.Failure("بيانات الطبيب أو مفتاح التحقق غير صحيح", 404);
+                    return ApiResponse<ClinicDoctorDetailsDto>.Failure("Doctor details or verification key is incorrect", 404);
 
                 var newLink = new Models.Entities.DoctorClinic
                 {
@@ -325,7 +325,7 @@ namespace MedicalApp.API.Services.Implementations
             var admin = await _unitOfWork.ClinicAdmins.Query()
                 .FirstOrDefaultAsync(ca => ca.UserId == clinicAdminUserId);
             if (admin == null)
-                return ApiResponse<ClinicDoctorDetailsDto>.Failure("غير مصرح لك بجلب تفاصيل الطبيب كمسؤول", 403);
+                return ApiResponse<ClinicDoctorDetailsDto>.Failure("You are not authorized to fetch doctor details as an admin", 403);
 
             var link = await _unitOfWork.DoctorClinics.Query()
                 .Include(dc => dc.Doctor)
@@ -333,7 +333,7 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(dc => dc.ClinicId == admin.ClinicId && dc.DoctorId == doctorId && dc.IsActive);
 
             if (link == null)
-                return ApiResponse<ClinicDoctorDetailsDto>.Failure("الطبيب غير مسجل في هذه العيادة", 404);
+                return ApiResponse<ClinicDoctorDetailsDto>.Failure("Doctor is not registered in this clinic", 404);
 
             var schedules = await _unitOfWork.DoctorSchedules.Query()
                 .Where(s => s.ClinicId == admin.ClinicId && s.DoctorId == doctorId)
@@ -363,7 +363,7 @@ namespace MedicalApp.API.Services.Implementations
                 Schedules = schedules
             };
 
-            return ApiResponse<ClinicDoctorDetailsDto>.Success(dto, "تم استرجاع تفاصيل الطبيب بنجاح");
+            return ApiResponse<ClinicDoctorDetailsDto>.Success(dto, "Doctor details retrieved successfully");
         }
 
         public async Task<ApiResponse<ClinicDoctorDetailsDto>> UpdateClinicDoctorAsync(int clinicAdminUserId, int doctorId, UpdateClinicDoctorDto dto)
@@ -377,13 +377,13 @@ namespace MedicalApp.API.Services.Implementations
             var admin = await _unitOfWork.ClinicAdmins.Query()
                 .FirstOrDefaultAsync(ca => ca.UserId == clinicAdminUserId);
             if (admin == null)
-                return ApiResponse<bool>.Failure("غير مصرح لك بحذف طبيب كمسؤول", 403);
+                return ApiResponse<bool>.Failure("You are not authorized to remove a doctor as an admin", 403);
 
             var link = await _unitOfWork.DoctorClinics.Query()
                 .FirstOrDefaultAsync(dc => dc.ClinicId == admin.ClinicId && dc.DoctorId == doctorId);
 
             if (link == null || !link.IsActive)
-                return ApiResponse<bool>.Failure("الطبيب غير مسجل بالفعل في هذه العيادة", 404);
+                return ApiResponse<bool>.Failure("Doctor is not currently registered in this clinic", 404);
 
             link.IsActive = false;
             _unitOfWork.DoctorClinics.Update(link);
@@ -400,7 +400,7 @@ namespace MedicalApp.API.Services.Implementations
             }
 
             await _unitOfWork.CompleteAsync();
-            return ApiResponse<bool>.Success(true, "تم إزالة الطبيب من العيادة بنجاح");
+            return ApiResponse<bool>.Success(true, "Doctor removed from clinic successfully");
         }
     }
 }

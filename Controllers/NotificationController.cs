@@ -34,9 +34,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Mark a specific notification as read.
-        /// </summary>
         [HttpPut("{id}/read")]
         public async Task<IActionResult> MarkAsRead(int id)
         {

@@ -23,12 +23,12 @@ namespace MedicalApp.API.Services.Implementations
             var doctor = await _unitOfWork.Doctors.Query().Include(d => d.User)
                 .FirstOrDefaultAsync(d => d.UserId == userId);
             if (doctor == null)
-                return ApiResponse<MedicalRecordDto>.Failure("ملف الطبيب غير موجود", 404);
+                return ApiResponse<MedicalRecordDto>.Failure("Doctor profile not found", 404);
 
             var patient = await _unitOfWork.Patients.Query().Include(p => p.User)
                 .FirstOrDefaultAsync(p => p.Id == dto.PatientId);
             if (patient == null)
-                return ApiResponse<MedicalRecordDto>.Failure("المريض غير موجود", 404);
+                return ApiResponse<MedicalRecordDto>.Failure("Patient not found", 404);
 
             // Handle structured prescriptions JSON serialization
             string? prescriptionContent = dto.Prescription;
@@ -95,19 +95,19 @@ namespace MedicalApp.API.Services.Implementations
                 notificationCareText = dto.TreatmentPlan ?? string.Empty;
             }
 
-            string notificationNotesText = dto.Observations ?? dto.Notes ?? "لا توجد ملاحظات إضافية.";
+            string notificationNotesText = dto.Observations ?? dto.Notes ?? "No additional notes.";
 
             if (!string.IsNullOrWhiteSpace(notificationPrescriptionText) && patient.User != null && !string.IsNullOrEmpty(patient.User.PhoneNumber))
             {
                 try
                 {
-                    var msgText = $"📝 *تم تسجيل روشتة طبية جديدة لك*\n\n" +
-                                  $"👨‍⚕️ *الطبيب:* د. {doctor.User.FullName}\n" +
-                                  $"📋 *التشخيص الرئيسي:* {dto.Diagnosis}\n\n" +
-                                  $"💊 *الروشتة والعلاجات المطلوبة:*\n{notificationPrescriptionText}\n\n" +
-                                  (string.IsNullOrWhiteSpace(notificationCareText) ? "" : $"📅 *تعليمات الرعاية والعلاج:*\n{notificationCareText}\n\n") +
-                                  $"💡 *ملاحظات الطبيب:* {notificationNotesText}\n\n" +
-                                  $"تم حفظ هذه الروشتة تلقائياً في تاريخك الطبي على التطبيق ✅";
+                    var msgText = $"📝 *A new prescription has been recorded for you*\n\n" +
+                                  $"👨‍⚕️ *Doctor:* Dr. {doctor.User.FullName}\n" +
+                                  $"📋 *Main diagnosis:* {dto.Diagnosis}\n\n" +
+                                  $"💊 *Prescription and required medications:*\n{notificationPrescriptionText}\n\n" +
+                                  (string.IsNullOrWhiteSpace(notificationCareText) ? "" : $"📅 *Care and treatment instructions:*\n{notificationCareText}\n\n") +
+                                  $"💡 *Doctor's notes:* {notificationNotesText}\n\n" +
+                                  $"This prescription has been automatically saved to your medical history in the app ✅";
 
                     await _telegramOtpService.SendNotificationAsync(patient.User.PhoneNumber, msgText);
                 }
@@ -121,33 +121,33 @@ namespace MedicalApp.API.Services.Implementations
             record.Patient = patient;
 
             var result = MapToDto(record);
-            return ApiResponse<MedicalRecordDto>.Success(result, "تم إنشاء السجل الطبي بنجاح", 201);
+            return ApiResponse<MedicalRecordDto>.Success(result, "Medical record created successfully", 201);
         }
 
         public async Task<ApiResponse<List<MedicalRecordDto>>> GetPatientRecordsAsync(int patientId, int userId)
         {
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
-            if (user == null) return ApiResponse<List<MedicalRecordDto>>.Failure("المستخدم غير موجود", 404);
+            if (user == null) return ApiResponse<List<MedicalRecordDto>>.Failure("User not found", 404);
 
             // 1. If Patient: Can only view their own records
             if (user.Role == Models.Enums.UserRole.Patient)
             {
                 var patient = await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == userId);
                 if (patient == null || patient.Id != patientId)
-                    return ApiResponse<List<MedicalRecordDto>>.Failure("غير مصرح لك باستعراض هذا السجل", 403);
+                    return ApiResponse<List<MedicalRecordDto>>.Failure("You are not authorized to view this record", 403);
             }
 
             // 2. If Doctor: Can only view records of patients they have treated (has an appointment with them)
             if (user.Role == Models.Enums.UserRole.Doctor)
             {
                 var doctor = await _unitOfWork.Doctors.Query().FirstOrDefaultAsync(d => d.UserId == userId);
-                if (doctor == null) return ApiResponse<List<MedicalRecordDto>>.Failure("غير مصرح", 403);
+                if (doctor == null) return ApiResponse<List<MedicalRecordDto>>.Failure("Unauthorized", 403);
 
                 var hasTreated = await _unitOfWork.Appointments.Query()
                     .AnyAsync(a => a.DoctorId == doctor.Id && a.PatientId == patientId);
-                
+
                 if (!hasTreated)
-                    return ApiResponse<List<MedicalRecordDto>>.Failure("لا يمكنك استعراض سجل مريض لم تقم بمعالجته", 403);
+                    return ApiResponse<List<MedicalRecordDto>>.Failure("You cannot view records of a patient you have not treated", 403);
             }
 
             var records = await _unitOfWork.MedicalRecords.Query()
@@ -169,24 +169,24 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(r => r.Id == recordId);
 
             if (record == null)
-                return ApiResponse<MedicalRecordDto>.Failure("السجل الطبي غير موجود", 404);
+                return ApiResponse<MedicalRecordDto>.Failure("Medical record not found", 404);
 
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
-            if (user == null) return ApiResponse<MedicalRecordDto>.Failure("المستخدم غير موجود", 404);
+            if (user == null) return ApiResponse<MedicalRecordDto>.Failure("User not found", 404);
 
             // 1. If Patient: Can only view their own record
             if (user.Role == Models.Enums.UserRole.Patient)
             {
                 var patient = await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == userId);
                 if (patient == null || record.PatientId != patient.Id)
-                    return ApiResponse<MedicalRecordDto>.Failure("غير مصرح لك باستعراض هذا السجل", 403);
+                    return ApiResponse<MedicalRecordDto>.Failure("You are not authorized to view this record", 403);
             }
 
             // 2. If Doctor: Can only view records they created OR records of patients they have treated
             if (user.Role == Models.Enums.UserRole.Doctor)
             {
                 var doctor = await _unitOfWork.Doctors.Query().FirstOrDefaultAsync(d => d.UserId == userId);
-                if (doctor == null) return ApiResponse<MedicalRecordDto>.Failure("غير مصرح", 403);
+                if (doctor == null) return ApiResponse<MedicalRecordDto>.Failure("Unauthorized", 403);
 
                 if (record.DoctorId != doctor.Id)
                 {
@@ -194,7 +194,7 @@ namespace MedicalApp.API.Services.Implementations
                         .AnyAsync(a => a.DoctorId == doctor.Id && a.PatientId == record.PatientId);
 
                     if (!hasTreated)
-                        return ApiResponse<MedicalRecordDto>.Failure("لا يمكنك استعراض هذا السجل", 403);
+                        return ApiResponse<MedicalRecordDto>.Failure("You cannot view this record", 403);
                 }
             }
 

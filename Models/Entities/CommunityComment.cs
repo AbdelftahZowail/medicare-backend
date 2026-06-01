@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MedicalApp.API.Models.Entities
 {
-    /// <summary>
-    /// Represents a comment written on a CommunityPost by a User.
-    /// </summary>
     public class CommunityComment : BaseEntity
     {
         [Required]

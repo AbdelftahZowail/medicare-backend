@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MedicalApp.API.Models.Entities
 {
-    /// <summary>
-    /// Review/Rating given by a Patient to a Doctor after an appointment.
-    /// </summary>
     public class Review : BaseEntity
     {
         [Required]
@@ -25,9 +22,6 @@ namespace MedicalApp.API.Models.Entities
         [ForeignKey(nameof(AppointmentId))]
         public Appointment? Appointment { get; set; }
 
-        /// <summary>
-        /// Rating from 1 to 5.
-        /// </summary>
         [Range(1, 5)]
         public int Rating { get; set; }
 

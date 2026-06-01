@@ -17,13 +17,13 @@ namespace MedicalApp.API.DTOs.Review
 
     public class CreateReviewDto
     {
-        [Required(ErrorMessage = "معرف الطبيب مطلوب")]
+        [Required(ErrorMessage = "Doctor ID is required")]
         public int DoctorId { get; set; }
 
         public int? AppointmentId { get; set; }
 
-        [Required(ErrorMessage = "التقييم مطلوب")]
-        [Range(1, 5, ErrorMessage = "التقييم يجب أن يكون من 1 إلى 5")]
+        [Required(ErrorMessage = "Rating is required")]
+        [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5")]
         public int Rating { get; set; }
 
         [MaxLength(1000)]

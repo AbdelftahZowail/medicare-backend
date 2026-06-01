@@ -30,8 +30,8 @@ namespace MedicalApp.API.Services.Implementations
             if (mapping == null)
             {
                 return ApiResponse<bool>.Failure(
-                    "لم يتم العثور على حساب تليجرام مرتبط بهذا الرقم. يرجى التفعيل أولاً عبر بوت التليجرام.", 
-                    404, 
+                    "No Telegram account linked to this phone number was found. Please activate via the Telegram bot first.",
+                    404,
                     new List<string> { "NoTelegramMapping" }
                 );
             }
@@ -42,13 +42,13 @@ namespace MedicalApp.API.Services.Implementations
             {
                 // Fallback for development: if no bot token is set, we will just print to console and act as if sent.
                 Console.WriteLine($"[TELEGRAM OTP MOCK] Sent OTP {otpCode} to ChatId {mapping.TelegramChatId}");
-                return ApiResponse<bool>.Success(true, "تم إرسال كود التفعيل بنجاح (وضع التطوير)");
+                return ApiResponse<bool>.Success(true, "Verification code sent successfully (development mode)");
             }
 
             // 3. Send message via Telegram Bot API
-            var message = $"رمز التحقق الخاص بك في منصة Medical Platform هو: *{otpCode}*\nصالح لمدة 5 دقائق.";
+            var message = $"Your verification code for the Medical Platform is: *{otpCode}*\nValid for 5 minutes.";
             var url = $"https://api.telegram.org/bot{botToken}/sendMessage";
-            
+
             try
             {
                 var payload = new
@@ -61,17 +61,17 @@ namespace MedicalApp.API.Services.Implementations
                 var response = await _httpClient.PostAsJsonAsync(url, payload);
                 if (response.IsSuccessStatusCode)
                 {
-                    return ApiResponse<bool>.Success(true, "تم إرسال كود التفعيل بنجاح عبر تليجرام");
+                    return ApiResponse<bool>.Success(true, "Verification code sent successfully via Telegram");
                 }
-                
+
                 var errorContent = await response.Content.ReadAsStringAsync();
                 Console.WriteLine($"[Telegram API Error] {errorContent}");
-                return ApiResponse<bool>.Failure("فشل إرسال الرسالة عبر تليجرام. يرجى المحاولة لاحقاً.", 500);
+                return ApiResponse<bool>.Failure("Failed to send the message via Telegram. Please try again later.", 500);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[Telegram Client Exception] {ex.Message}");
-                return ApiResponse<bool>.Failure("حدث خطأ أثناء الاتصال بخدمة تليجرام.", 500);
+                return ApiResponse<bool>.Failure("An error occurred while connecting to the Telegram service.", 500);
             }
         }
 
@@ -84,8 +84,8 @@ namespace MedicalApp.API.Services.Implementations
             if (mapping == null)
             {
                 return ApiResponse<bool>.Failure(
-                    "لم يتم العثور على حساب تليجرام مرتبط بهذا الرقم للتبليغ.", 
-                    404, 
+                    "No Telegram account linked to this phone number was found for notifications.",
+                    404,
                     new List<string> { "NoTelegramMapping" }
                 );
             }
@@ -95,12 +95,12 @@ namespace MedicalApp.API.Services.Implementations
             if (string.IsNullOrEmpty(botToken) || botToken == "YOUR_TELEGRAM_BOT_TOKEN")
             {
                 Console.WriteLine($"[TELEGRAM NOTIFICATION MOCK] Sent message to ChatId {mapping.TelegramChatId}:\n{message}");
-                return ApiResponse<bool>.Success(true, "تم إرسال التنبيه بنجاح (وضع التطوير)");
+                return ApiResponse<bool>.Success(true, "Notification sent successfully (development mode)");
             }
 
             // 3. Send message via Telegram Bot API
             var url = $"https://api.telegram.org/bot{botToken}/sendMessage";
-            
+
             try
             {
                 var payload = new
@@ -113,17 +113,17 @@ namespace MedicalApp.API.Services.Implementations
                 var response = await _httpClient.PostAsJsonAsync(url, payload);
                 if (response.IsSuccessStatusCode)
                 {
-                    return ApiResponse<bool>.Success(true, "تم إرسال التنبيه بنجاح عبر تليجرام");
+                    return ApiResponse<bool>.Success(true, "Notification sent successfully via Telegram");
                 }
-                
+
                 var errorContent = await response.Content.ReadAsStringAsync();
                 Console.WriteLine($"[Telegram API Error] {errorContent}");
-                return ApiResponse<bool>.Failure("فشل إرسال الرسالة عبر تليجرام.", 500);
+                return ApiResponse<bool>.Failure("Failed to send the message via Telegram.", 500);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[Telegram Client Exception] {ex.Message}");
-                return ApiResponse<bool>.Failure("حدث خطأ أثناء الاتصال بخدمة تليجرام.", 500);
+                return ApiResponse<bool>.Failure("An error occurred while connecting to the Telegram service.", 500);
             }
         }
 
@@ -155,7 +155,7 @@ namespace MedicalApp.API.Services.Implementations
             }
 
             await _unitOfWork.CompleteAsync();
-            return ApiResponse<bool>.Success(true, "تم ربط حساب تليجرام بنجاح! يمكنك الآن طلب كود التفعيل.");
+            return ApiResponse<bool>.Success(true, "Telegram account linked successfully! You can now request a verification code.");
         }
     }
 }

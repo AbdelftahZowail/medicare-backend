@@ -6,68 +6,68 @@ namespace MedicalApp.API.DTOs.Auth
     // ===== Login DTO (by Phone) =====
     public class LoginDto
     {
-        [Required(ErrorMessage = "رقم الهاتف مطلوب")]
+        [Required(ErrorMessage = "Phone number is required")]
         [MaxLength(20)]
         public string Phone { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "كلمة المرور مطلوبة")]
+        [Required(ErrorMessage = "Password is required")]
         public string Password { get; set; } = string.Empty;
     }
 
     // ===== Register Patient =====
     public class RegisterPatientDto
     {
-        [Required(ErrorMessage = "الاسم مطلوب")]
+        [Required(ErrorMessage = "Name is required")]
         [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "رقم الهاتف مطلوب")]
+        [Required(ErrorMessage = "Phone number is required")]
         [MaxLength(20)]
         public string Phone { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "العمر مطلوب")]
+        [Required(ErrorMessage = "Age is required")]
         public int Age { get; set; }
 
-        [Required(ErrorMessage = "كلمة المرور مطلوبة")]
-        [MinLength(6, ErrorMessage = "كلمة المرور يجب أن تكون 6 أحرف على الأقل")]
+        [Required(ErrorMessage = "Password is required")]
+        [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
         public string Password { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "تأكيد كلمة المرور مطلوب")]
-        [Compare(nameof(Password), ErrorMessage = "كلمة المرور غير متطابقة")]
+        [Required(ErrorMessage = "Password confirmation is required")]
+        [Compare(nameof(Password), ErrorMessage = "Passwords do not match")]
         public string ConfirmPassword { get; set; } = string.Empty;
     }
 
     // ===== Register Clinic =====
     public class RegisterClinicDto
     {
-        [Required(ErrorMessage = "اسم العيادة مطلوب")]
+        [Required(ErrorMessage = "Clinic name is required")]
         [MaxLength(200)]
         public string ClinicName { get; set; } = string.Empty;
 
         [MaxLength(500)]
         public string? LinkMap { get; set; }
 
-        [Required(ErrorMessage = "المحافظة مطلوبة")]
+        [Required(ErrorMessage = "Government is required")]
         [MaxLength(100)]
         public string Government { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "المنطقة مطلوبة")]
+        [Required(ErrorMessage = "Area is required")]
         [MaxLength(100)]
         public string Area { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "رقم الهاتف مطلوب")]
+        [Required(ErrorMessage = "Phone number is required")]
         [MaxLength(20)]
         public string Phone { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "كلمة المرور مطلوبة")]
-        [MinLength(6, ErrorMessage = "كلمة المرور يجب أن تكون 6 أحرف على الأقل")]
+        [Required(ErrorMessage = "Password is required")]
+        [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
         public string Password { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "تأكيد كلمة المرور مطلوب")]
-        [Compare(nameof(Password), ErrorMessage = "كلمة المرور غير متطابقة")]
+        [Required(ErrorMessage = "Password confirmation is required")]
+        [Compare(nameof(Password), ErrorMessage = "Passwords do not match")]
         public string ConfirmPassword { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "رخصة العيادة مطلوبة")]
+        [Required(ErrorMessage = "Clinic license is required")]
         [MaxLength(500)]
         public string LicenseFileUrl { get; set; } = string.Empty;
     }
@@ -75,27 +75,27 @@ namespace MedicalApp.API.DTOs.Auth
     // ===== Register Doctor =====
     public class RegisterDoctorDto
     {
-        [Required(ErrorMessage = "الاسم مطلوب")]
+        [Required(ErrorMessage = "Name is required")]
         [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "رقم الهاتف مطلوب")]
+        [Required(ErrorMessage = "Phone number is required")]
         [MaxLength(20)]
         public string Phone { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "كلمة المرور مطلوبة")]
-        [MinLength(6, ErrorMessage = "كلمة المرور يجب أن تكون 6 أحرف على الأقل")]
+        [Required(ErrorMessage = "Password is required")]
+        [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
         public string Password { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "تأكيد كلمة المرور مطلوب")]
-        [Compare(nameof(Password), ErrorMessage = "كلمة المرور غير متطابقة")]
+        [Required(ErrorMessage = "Password confirmation is required")]
+        [Compare(nameof(Password), ErrorMessage = "Passwords do not match")]
         public string ConfirmPassword { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "التخصص مطلوب")]
+        [Required(ErrorMessage = "Specialization is required")]
         [MaxLength(100)]
         public string Specialization { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "رخصة الطبيب مطلوبة")]
+        [Required(ErrorMessage = "Doctor license is required")]
         [MaxLength(500)]
         public string LicenseFileUrl { get; set; } = string.Empty;
     }
@@ -103,7 +103,7 @@ namespace MedicalApp.API.DTOs.Auth
     // ===== Forgot Password =====
     public class ForgotPasswordDto
     {
-        [Required(ErrorMessage = "رقم الهاتف مطلوب")]
+        [Required(ErrorMessage = "Phone number is required")]
         [MaxLength(20)]
         public string Phone { get; set; } = string.Empty;
     }
@@ -111,11 +111,11 @@ namespace MedicalApp.API.DTOs.Auth
     // ===== Verify OTP =====
     public class VerifyOtpDto
     {
-        [Required(ErrorMessage = "رقم الهاتف مطلوب")]
+        [Required(ErrorMessage = "Phone number is required")]
         [MaxLength(20)]
         public string Phone { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "رمز التحقق مطلوب")]
+        [Required(ErrorMessage = "OTP code is required")]
         [MaxLength(6)]
         public string OtpCode { get; set; } = string.Empty;
     }
@@ -123,20 +123,20 @@ namespace MedicalApp.API.DTOs.Auth
     // ===== Reset Password =====
     public class ResetPasswordDto
     {
-        [Required(ErrorMessage = "رقم الهاتف مطلوب")]
+        [Required(ErrorMessage = "Phone number is required")]
         [MaxLength(20)]
         public string Phone { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "رمز التحقق مطلوب")]
+        [Required(ErrorMessage = "OTP code is required")]
         [MaxLength(6)]
         public string OtpCode { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "كلمة المرور الجديدة مطلوبة")]
-        [MinLength(6, ErrorMessage = "كلمة المرور يجب أن تكون 6 أحرف على الأقل")]
+        [Required(ErrorMessage = "New password is required")]
+        [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
         public string NewPassword { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "تأكيد كلمة المرور مطلوب")]
-        [Compare(nameof(NewPassword), ErrorMessage = "كلمة المرور غير متطابقة")]
+        [Required(ErrorMessage = "Password confirmation is required")]
+        [Compare(nameof(NewPassword), ErrorMessage = "Passwords do not match")]
         public string ConfirmPassword { get; set; } = string.Empty;
     }
 
@@ -152,7 +152,7 @@ namespace MedicalApp.API.DTOs.Auth
 
     public class RefreshTokenRequestDto
     {
-        [Required(ErrorMessage = "رمز التحديث مطلوب")]
+        [Required(ErrorMessage = "Refresh token is required")]
         public string RefreshToken { get; set; } = string.Empty;
     }
 
@@ -178,10 +178,10 @@ namespace MedicalApp.API.DTOs.Auth
 
     public class RegisterTelegramDto
     {
-        [Required(ErrorMessage = "رقم الهاتف مطلوب")]
+        [Required(ErrorMessage = "Phone number is required")]
         public string PhoneNumber { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "رمز التليجرام (Chat ID) مطلوب")]
+        [Required(ErrorMessage = "Telegram Chat ID is required")]
         public string TelegramChatId { get; set; } = string.Empty;
     }
 }

@@ -36,7 +36,7 @@ namespace MedicalApp.API.Services.Implementations
         public async Task<ApiResponse<AuthResponseDto>> RegisterPatientAsync(RegisterPatientDto dto)
         {
             if (await PhoneExists(dto.Phone))
-                return ApiResponse<AuthResponseDto>.Failure("رقم الهاتف مسجل بالفعل", 409);
+                return ApiResponse<AuthResponseDto>.Failure("Phone number already registered", 409);
 
             var user = new User
             {
@@ -60,14 +60,14 @@ namespace MedicalApp.API.Services.Implementations
             await _unitOfWork.CompleteAsync();
 
             return ApiResponse<AuthResponseDto>.Success(
-                BuildAuthResponse(user, patient.Id, refreshToken), "تم إنشاء الحساب بنجاح", 201);
+                BuildAuthResponse(user, patient.Id, refreshToken), "Account created successfully", 201);
         }
 
         // ===== Register Clinic =====
         public async Task<ApiResponse<AuthResponseDto>> RegisterClinicAsync(RegisterClinicDto dto)
         {
             if (await PhoneExists(dto.Phone))
-                return ApiResponse<AuthResponseDto>.Failure("رقم الهاتف مسجل بالفعل", 409);
+                return ApiResponse<AuthResponseDto>.Failure("Phone number already registered", 409);
 
             // Create user with ClinicAdmin role
             var user = new User
@@ -100,7 +100,7 @@ namespace MedicalApp.API.Services.Implementations
             {
                 UserId = user.Id,
                 ClinicId = clinic.Id,
-                Position = "مدير العيادة"
+                Position = "Clinic Manager"
             };
 
             await _unitOfWork.ClinicAdmins.AddAsync(clinicAdmin);
@@ -112,14 +112,14 @@ namespace MedicalApp.API.Services.Implementations
             await _unitOfWork.CompleteAsync();
 
             return ApiResponse<AuthResponseDto>.Success(
-                BuildAuthResponse(user, clinicAdmin.Id, refreshToken), "تم إنشاء حساب العيادة بنجاح", 201);
+                BuildAuthResponse(user, clinicAdmin.Id, refreshToken), "Clinic account created successfully", 201);
         }
 
         // ===== Register Doctor =====
         public async Task<ApiResponse<AuthResponseDto>> RegisterDoctorAsync(RegisterDoctorDto dto)
         {
             if (await PhoneExists(dto.Phone))
-                return ApiResponse<AuthResponseDto>.Failure("رقم الهاتف مسجل بالفعل", 409);
+                return ApiResponse<AuthResponseDto>.Failure("Phone number already registered", 409);
 
             var user = new User
             {
@@ -148,7 +148,7 @@ namespace MedicalApp.API.Services.Implementations
             await _unitOfWork.CompleteAsync();
 
             return ApiResponse<AuthResponseDto>.Success(
-                BuildAuthResponse(user, doctor.Id, refreshToken), "تم إنشاء حساب الطبيب بنجاح", 201);
+                BuildAuthResponse(user, doctor.Id, refreshToken), "Doctor account created successfully", 201);
         }
 
         // ===== Login =====
@@ -158,13 +158,13 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(u => u.PhoneNumber == dto.Phone.Trim());
 
             if (user == null)
-                return ApiResponse<AuthResponseDto>.Failure("رقم الهاتف أو كلمة المرور غير صحيحة", 401);
+                return ApiResponse<AuthResponseDto>.Failure("Phone number or password is incorrect", 401);
 
             if (!user.IsActive)
-                return ApiResponse<AuthResponseDto>.Failure("الحساب معطل، يرجى التواصل مع الدعم", 403);
+                return ApiResponse<AuthResponseDto>.Failure("Account is disabled. Please contact support", 403);
 
             if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-                return ApiResponse<AuthResponseDto>.Failure("رقم الهاتف أو كلمة المرور غير صحيحة", 401);
+                return ApiResponse<AuthResponseDto>.Failure("Phone number or password is incorrect", 401);
 
             int? profileId = await GetProfileId(user);
             var refreshToken = GenerateRefreshToken();
@@ -174,7 +174,7 @@ namespace MedicalApp.API.Services.Implementations
             await _unitOfWork.CompleteAsync();
 
             return ApiResponse<AuthResponseDto>.Success(
-                BuildAuthResponse(user, profileId, refreshToken), "تم تسجيل الدخول بنجاح");
+                BuildAuthResponse(user, profileId, refreshToken), "Signed in successfully");
         }
 
         public async Task<ApiResponse<AuthResponseDto>> RefreshTokenAsync(RefreshTokenRequestDto dto)
@@ -183,11 +183,11 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(rt => rt.Token == dto.RefreshToken && !rt.IsRevoked && rt.ExpiresAt > DateTime.UtcNow);
 
             if (refreshToken == null)
-                return ApiResponse<AuthResponseDto>.Failure("رمز التحديث غير صالح أو منتهي الصلاحية", 401);
+                return ApiResponse<AuthResponseDto>.Failure("Refresh token is invalid or expired", 401);
 
             var user = await _unitOfWork.Users.GetByIdAsync(refreshToken.UserId);
             if (user == null)
-                return ApiResponse<AuthResponseDto>.Failure("المستخدم غير موجود", 404);
+                return ApiResponse<AuthResponseDto>.Failure("User not found", 404);
 
             refreshToken.IsRevoked = true;
             refreshToken.RevokedAt = DateTime.UtcNow;
@@ -200,7 +200,7 @@ namespace MedicalApp.API.Services.Implementations
 
             var profileId = await GetProfileId(user);
             return ApiResponse<AuthResponseDto>.Success(
-                BuildAuthResponse(user, profileId, newRefreshToken), "تم تجديد صلاحية الدخول بنجاح");
+                BuildAuthResponse(user, profileId, newRefreshToken), "Session refreshed successfully");
         }
 
         public async Task<ApiResponse> LogoutAsync(int userId, LogoutRequestDto dto)
@@ -218,7 +218,7 @@ namespace MedicalApp.API.Services.Implementations
                     await _unitOfWork.CompleteAsync();
                 }
 
-                return ApiResponse.Success("تم تسجيل الخروج بنجاح");
+                return ApiResponse.Success("Signed out successfully");
             }
 
             var activeTokens = await _unitOfWork.RefreshTokens.Query()
@@ -237,7 +237,7 @@ namespace MedicalApp.API.Services.Implementations
                 await _unitOfWork.CompleteAsync();
             }
 
-            return ApiResponse.Success("تم تسجيل الخروج بنجاح");
+            return ApiResponse.Success("Signed out successfully");
         }
 
         private RefreshToken GenerateRefreshToken()
@@ -262,7 +262,7 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(u => u.PhoneNumber == dto.Phone.Trim());
 
             if (user == null)
-                return ApiResponse.Failure("رقم الهاتف غير مسجل", 404);
+                return ApiResponse.Failure("Phone number is not registered", 404);
 
             // Generate 4-digit OTP
             var otp = new Random().Next(1000, 9999).ToString();
@@ -290,15 +290,15 @@ namespace MedicalApp.API.Services.Implementations
             {
                 var botUsername = _configuration["TelegramSettings:BotUsername"] ?? "MedicalPlatformOtpBot";
                 return ApiResponse.Failure(
-                    $"يرجى تفعيل بوت التليجرام أولاً لاستلام رمز التحقق مجاناً.\nقم بفتح البوت @{botUsername} واضغط Start ثم شارك رقم هاتفك.", 
-                    400, 
+                    $"Please activate the Telegram bot first to receive your verification code for free.\nOpen the bot @{botUsername}, press Start, and share your phone number.",
+                    400,
                     new List<string> { "RequireTelegramActivation", botUsername }
                 );
             }
 
             _logger.LogInformation("OTP for {Phone} sent via Telegram: {Code}", dto.Phone, otp);
 
-            return ApiResponse.Success("تم إرسال رمز التحقق بنجاح إلى حساب تليجرام الخاص بك");
+            return ApiResponse.Success("Verification code sent successfully to your Telegram account");
         }
 
         // ===== Verify OTP =====
@@ -313,9 +313,9 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync();
 
             if (otpCode == null)
-                return ApiResponse.Failure("رمز التحقق غير صحيح أو منتهي الصلاحية", 400);
+                return ApiResponse.Failure("Verification code is incorrect or expired", 400);
 
-            return ApiResponse.Success("رمز التحقق صحيح");
+            return ApiResponse.Success("Verification code is valid");
         }
 
         // ===== Reset Password =====
@@ -330,27 +330,27 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync();
 
             if (otpCode == null)
-                return ApiResponse.Failure("رمز التحقق غير صحيح أو منتهي الصلاحية", 400);
+                return ApiResponse.Failure("Verification code is incorrect or expired", 400);
 
             var user = await _unitOfWork.Users.Query()
                 .FirstOrDefaultAsync(u => u.PhoneNumber == dto.Phone.Trim());
 
             if (user == null)
-                return ApiResponse.Failure("المستخدم غير موجود", 404);
+                return ApiResponse.Failure("User not found", 404);
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
             otpCode.IsUsed = true;
 
             await _unitOfWork.CompleteAsync();
 
-            return ApiResponse.Success("تم تغيير كلمة المرور بنجاح");
+            return ApiResponse.Success("Password changed successfully");
         }
 
         // ===== Social Login =====
         public async Task<ApiResponse<AuthResponseDto>> SocialLoginAsync(SocialLoginDto dto)
         {
             return ApiResponse<AuthResponseDto>.Failure(
-                "تسجيل الدخول عبر " + dto.Provider + " غير مفعل حالياً، سيتم تفعيله قريباً", 501);
+                "Sign in via " + dto.Provider + " is not yet enabled, it will be available soon", 501);
         }
 
         // ===== Helper Methods =====

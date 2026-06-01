@@ -15,7 +15,7 @@ namespace MedicalApp.API.Middleware
                         .Select(v => v.ErrorMessage)
                         .ToList();
 
-                var response = ApiResponse.Failure("يوجد خطأ في البيانات المدخلة", 400, errors);
+                var response = ApiResponse.Failure("There are errors in the submitted data", 400, errors);
 
                 context.Result = new BadRequestObjectResult(response);
             }

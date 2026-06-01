@@ -29,7 +29,7 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(p => p.UserId == userId);
 
             if (patient == null)
-                return ApiResponse<AppointmentDto>.Failure("حساب المريض غير موجود", 404);
+                return ApiResponse<AppointmentDto>.Failure("Patient account not found", 404);
 
             // Find Doctor
             var doctor = await _unitOfWork.Doctors.Query()
@@ -37,7 +37,7 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(d => d.Id == dto.DoctorId);
 
             if (doctor == null)
-                return ApiResponse<AppointmentDto>.Failure("الطبيب المحدد غير موجود", 404);
+                return ApiResponse<AppointmentDto>.Failure("Selected doctor not found", 404);
 
             // Check if slot falls on active doctor schedule day
             var dayOfWeek = dto.AppointmentDate.DayOfWeek;
@@ -45,24 +45,24 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(s => s.DoctorId == dto.DoctorId && s.DayOfWeek == dayOfWeek && s.IsActive);
 
             if (schedule == null)
-                return ApiResponse<AppointmentDto>.Failure("الطبيب ليس لديه مواعيد عمل متاحة في هذا اليوم", 400);
+                return ApiResponse<AppointmentDto>.Failure("Doctor has no available working hours on this day", 400);
 
             // Validate that the slot is inside operating hours
             if (dto.StartTime < schedule.StartTime || dto.StartTime >= schedule.EndTime)
-                return ApiResponse<AppointmentDto>.Failure("وقت الحجز يقع خارج ساعات عمل الطبيب الرسمية", 400);
+                return ApiResponse<AppointmentDto>.Failure("Booking time is outside the doctor's official working hours", 400);
 
             using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 // Prevent double booking (Check for active appointments in the same slot)
                 var doubleBookingExists = await _unitOfWork.Appointments.Query()
-                    .AnyAsync(a => a.DoctorId == dto.DoctorId 
-                        && a.AppointmentDate.Date == dto.AppointmentDate.Date 
-                        && a.StartTime == dto.StartTime 
+                    .AnyAsync(a => a.DoctorId == dto.DoctorId
+                        && a.AppointmentDate.Date == dto.AppointmentDate.Date
+                        && a.StartTime == dto.StartTime
                         && a.Status != AppointmentStatus.Cancelled);
 
                 if (doubleBookingExists)
-                    return ApiResponse<AppointmentDto>.Failure("عذراً، هذا الموعد محجوز بالفعل! يرجى اختيار موعد آخر", 409);
+                    return ApiResponse<AppointmentDto>.Failure("Sorry, this slot is already booked! Please choose another time", 409);
 
                 // Prevent a patient or family member from booking overlapping appointments
                 var hasOverlapForPerson = await _unitOfWork.Appointments.Query()
@@ -75,7 +75,7 @@ namespace MedicalApp.API.Services.Implementations
                         ));
 
                 if (hasOverlapForPerson)
-                    return ApiResponse<AppointmentDto>.Failure("لا يمكنك حجز أكثر من موعد لنفس الشخص في نفس الوقت", 409);
+                    return ApiResponse<AppointmentDto>.Failure("You cannot book more than one appointment for the same person at the same time", 409);
 
                 // Calculate Queue Number for the day
                 var todayAppointmentsCount = await _unitOfWork.Appointments.Query()
@@ -93,7 +93,7 @@ namespace MedicalApp.API.Services.Implementations
                     .FirstOrDefaultAsync(fm => fm.Id == dto.FamilyMemberId.Value && fm.PatientId == patient.Id);
 
                 if (familyMember == null)
-                    return ApiResponse<AppointmentDto>.Failure("فرد العائلة غير موجود أو لا ينتمي لهذا الحساب", 400);
+                    return ApiResponse<AppointmentDto>.Failure("Family member not found or does not belong to this account", 400);
             }
 
             // Create appointment
@@ -117,17 +117,17 @@ namespace MedicalApp.API.Services.Implementations
             var notification = new Notification
             {
                 UserId = userId,
-                Title = "تأكيد الحجز",
-                Message = $"تم تأكيد حجزك بنجاح مع د. {doctor.User.FullName} يوم {appointment.AppointmentDate:yyyy-MM-dd} الساعة {appointment.StartTime:hh\\:mm}."
+                Title = "Booking confirmed",
+                Message = $"Your booking with Dr. {doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been confirmed."
             };
             await _unitOfWork.Notifications.AddAsync(notification);
-            
+
             await _unitOfWork.CompleteAsync();
             await transaction.CommitAsync();
 
             _logger.LogInformation("Appointment created successfully. Queue: {Queue}", queueNumber);
 
-            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "تم حجز الموعد بنجاح", 201);
+            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "Appointment booked successfully", 201);
         }
         catch
         {
@@ -147,13 +147,13 @@ namespace MedicalApp.API.Services.Implementations
                 {
                     var admin = await _unitOfWork.ClinicAdmins.Query().FirstOrDefaultAsync(ca => ca.UserId == userId);
                     if (admin == null || !await _unitOfWork.DoctorClinics.AnyAsync(dc => dc.ClinicId == admin.ClinicId && dc.DoctorId == dto.DoctorId && dc.IsActive))
-                        return ApiResponse<AppointmentDto>.Failure("غير مصرح لك بالحجز لهذا الطبيب", 403);
+                        return ApiResponse<AppointmentDto>.Failure("You are not authorized to book for this doctor", 403);
                 }
                 else if (requestingUser.Role == UserRole.Doctor)
                 {
                     var requestingDoctor = await _unitOfWork.Doctors.Query().FirstOrDefaultAsync(d => d.UserId == userId);
                     if (requestingDoctor == null || requestingDoctor.Id != dto.DoctorId)
-                        return ApiResponse<AppointmentDto>.Failure("غير مصرح لك بالحجز كطبيب آخر", 403);
+                        return ApiResponse<AppointmentDto>.Failure("You are not authorized to book on behalf of another doctor", 403);
                 }
             }
 
@@ -163,7 +163,7 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(d => d.Id == dto.DoctorId);
 
             if (doctor == null)
-                return ApiResponse<AppointmentDto>.Failure("الطبيب المحدد غير موجود", 404);
+                return ApiResponse<AppointmentDto>.Failure("Selected doctor not found", 404);
 
             // Check if slot falls on active doctor schedule day
             var dayOfWeek = dto.AppointmentDate.DayOfWeek;
@@ -171,23 +171,23 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(s => s.DoctorId == dto.DoctorId && s.DayOfWeek == dayOfWeek && s.IsActive);
 
             if (schedule == null)
-                return ApiResponse<AppointmentDto>.Failure("الطبيب ليس لديه مواعيد عمل متاحة في هذا اليوم", 400);
+                return ApiResponse<AppointmentDto>.Failure("Doctor has no available working hours on this day", 400);
 
             // Validate slot inside operating hours
             if (dto.StartTime < schedule.StartTime || dto.StartTime >= schedule.EndTime)
-                return ApiResponse<AppointmentDto>.Failure("وقت الحجز يقع خارج ساعات عمل الطبيب الرسمية", 400);
+                return ApiResponse<AppointmentDto>.Failure("Booking time is outside the doctor's official working hours", 400);
 
             using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
             // Prevent double booking
             var doubleBookingExists = await _unitOfWork.Appointments.Query()
-                .AnyAsync(a => a.DoctorId == dto.DoctorId 
-                    && a.AppointmentDate.Date == dto.AppointmentDate.Date 
-                    && a.StartTime == dto.StartTime 
+                .AnyAsync(a => a.DoctorId == dto.DoctorId
+                    && a.AppointmentDate.Date == dto.AppointmentDate.Date
+                    && a.StartTime == dto.StartTime
                     && a.Status != AppointmentStatus.Cancelled);
 
             if (doubleBookingExists)
-                return ApiResponse<AppointmentDto>.Failure("عذراً، هذا الموعد محجوز بالفعل! يرجى اختيار موعد آخر", 409);
+                return ApiResponse<AppointmentDto>.Failure("Sorry, this slot is already booked! Please choose another time", 409);
 
             if (dto.PatientId.HasValue)
             {
@@ -198,7 +198,7 @@ namespace MedicalApp.API.Services.Implementations
                         && a.PatientId == dto.PatientId.Value);
 
                 if (patientOverlapExists)
-                    return ApiResponse<AppointmentDto>.Failure("لا يمكنك حجز أكثر من موعد لنفس المريض في نفس الوقت", 409);
+                    return ApiResponse<AppointmentDto>.Failure("You cannot book more than one appointment for the same patient at the same time", 409);
             }
 
             // Determine if booking is for a registered patient or offline walk-in
@@ -210,11 +210,11 @@ namespace MedicalApp.API.Services.Implementations
                     .FirstOrDefaultAsync(p => p.Id == dto.PatientId.Value);
 
                 if (registeredPatient == null)
-                    return ApiResponse<AppointmentDto>.Failure("المريض المسجل غير موجود", 404);
+                    return ApiResponse<AppointmentDto>.Failure("Registered patient not found", 404);
             }
             else if (string.IsNullOrWhiteSpace(dto.OfflinePatientName))
             {
-                return ApiResponse<AppointmentDto>.Failure("يجب إدخال اسم المريض الخارجي (Offline Patient Name) أو تحديد معرف مريض مسجل", 400);
+                return ApiResponse<AppointmentDto>.Failure("Please provide the offline patient name or specify a registered patient ID", 400);
             }
 
             // Calculate Queue Number for the day
@@ -255,8 +255,8 @@ namespace MedicalApp.API.Services.Implementations
                 var notification = new Notification
                 {
                     UserId = registeredPatient.UserId,
-                    Title = "تأكيد الحجز",
-                    Message = $"تم تأكيد حجزك بنجاح مع د. {doctor.User.FullName} يوم {appointment.AppointmentDate:yyyy-MM-dd} الساعة {appointment.StartTime:hh\\:mm}."
+                    Title = "Booking confirmed",
+                    Message = $"Your booking with Dr. {doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been confirmed."
                 };
                 await _unitOfWork.Notifications.AddAsync(notification);
             }
@@ -273,7 +273,7 @@ namespace MedicalApp.API.Services.Implementations
             }
             appointment.Doctor = doctor;
 
-            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "تم تسجيل موعد العيادة بنجاح", 201);
+            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "Clinic appointment booked successfully", 201);
         }
 
         // ===== Get Patient's Bookings list =====
@@ -283,7 +283,7 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(p => p.UserId == userId);
 
             if (patient == null)
-                return ApiResponse<List<AppointmentDto>>.Failure("حساب المريض غير موجود", 404);
+                return ApiResponse<List<AppointmentDto>>.Failure("Patient account not found", 404);
 
             var query = _unitOfWork.Appointments.Query()
                 .Include(a => a.Doctor)
@@ -308,7 +308,7 @@ namespace MedicalApp.API.Services.Implementations
                         .ToListAsync();
                     
                     var dtosList = appointmentsList.Select(MapToDto).ToList();
-                    return ApiResponse<List<AppointmentDto>>.Success(dtosList, "تم استرجاع مواعيد المريض القادمة بنجاح");
+                    return ApiResponse<List<AppointmentDto>>.Success(dtosList, "Upcoming patient appointments retrieved successfully");
                 }
                 else if (filter.Equals("completed", StringComparison.OrdinalIgnoreCase))
                 {
@@ -331,7 +331,7 @@ namespace MedicalApp.API.Services.Implementations
                 .ToListAsync();
 
             var dtos = appointments.Select(MapToDto).ToList();
-            return ApiResponse<List<AppointmentDto>>.Success(dtos, "تم استرجاع مواعيد المريض بنجاح");
+            return ApiResponse<List<AppointmentDto>>.Success(dtos, "Patient appointments retrieved successfully");
         }
 
         // ===== Get Doctor's Appointments list =====
@@ -341,7 +341,7 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(d => d.UserId == userId);
 
             if (doctor == null)
-                return ApiResponse<List<AppointmentDto>>.Failure("حساب الطبيب غير موجود", 404);
+                return ApiResponse<List<AppointmentDto>>.Failure("Doctor account not found", 404);
 
             var query = _unitOfWork.Appointments.Query()
                 .Include(a => a.Patient)
@@ -365,7 +365,7 @@ namespace MedicalApp.API.Services.Implementations
                 .ToListAsync();
 
             var dtos = appointments.Select(MapToDto).ToList();
-            return ApiResponse<List<AppointmentDto>>.Success(dtos, "تم استرجاع مواعيد الطبيب بنجاح");
+            return ApiResponse<List<AppointmentDto>>.Success(dtos, "Doctor appointments retrieved successfully");
         }
 
         // ===== Get Appointment By ID =====
@@ -383,24 +383,24 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
 
             if (appointment == null)
-                return ApiResponse<AppointmentDto>.Failure("الموعد غير موجود", 404);
+                return ApiResponse<AppointmentDto>.Failure("Appointment not found", 404);
 
             // Authorization check
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user == null)
-                return ApiResponse<AppointmentDto>.Failure("المستخدم غير موجود", 404);
+                return ApiResponse<AppointmentDto>.Failure("User not found", 404);
 
             if (user.Role == UserRole.Patient && appointment.PatientId != null)
             {
                 var patient = await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == userId);
                 if (patient == null || appointment.PatientId != patient.Id)
-                    return ApiResponse<AppointmentDto>.Failure("غير مصرح لك بعرض هذا الموعد", 403);
+                    return ApiResponse<AppointmentDto>.Failure("You are not authorized to view this appointment", 403);
             }
             else if (user.Role == UserRole.Doctor)
             {
                 var doctor = await _unitOfWork.Doctors.Query().FirstOrDefaultAsync(d => d.UserId == userId);
                 if (doctor == null || appointment.DoctorId != doctor.Id)
-                    return ApiResponse<AppointmentDto>.Failure("غير مصرح لك بعرض هذا الموعد", 403);
+                    return ApiResponse<AppointmentDto>.Failure("You are not authorized to view this appointment", 403);
             }
             else if (user.Role == UserRole.ClinicAdmin)
             {
@@ -408,12 +408,12 @@ namespace MedicalApp.API.Services.Implementations
                 var admin = await _unitOfWork.ClinicAdmins.Query().FirstOrDefaultAsync(a => a.UserId == userId);
                 var schedule = await _unitOfWork.DoctorSchedules.Query()
                     .FirstOrDefaultAsync(s => s.DoctorId == appointment.DoctorId);
-                
+
                 if (admin == null || schedule == null || schedule.ClinicId != admin.ClinicId)
-                    return ApiResponse<AppointmentDto>.Failure("غير مصرح لك بعرض هذا الموعد", 403);
+                    return ApiResponse<AppointmentDto>.Failure("You are not authorized to view this appointment", 403);
             }
 
-            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "تم استرجاع الموعد بنجاح");
+            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "Appointment retrieved successfully");
         }
 
         // ===== Cancel Appointment =====
@@ -427,24 +427,24 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
 
             if (appointment == null)
-                return ApiResponse<AppointmentDto>.Failure("الموعد غير موجود", 404);
+                return ApiResponse<AppointmentDto>.Failure("Appointment not found", 404);
 
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user == null)
-                return ApiResponse<AppointmentDto>.Failure("المستخدم غير موجود", 404);
+                return ApiResponse<AppointmentDto>.Failure("User not found", 404);
 
             // Authorization check for cancel
             if (user.Role == UserRole.Patient)
             {
                 var patient = await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == userId);
                 if (patient == null || appointment.PatientId != patient.Id)
-                    return ApiResponse<AppointmentDto>.Failure("غير مصرح لك بإلغاء هذا الموعد", 403);
+                    return ApiResponse<AppointmentDto>.Failure("You are not authorized to cancel this appointment", 403);
             }
             else if (user.Role == UserRole.Doctor)
             {
                 var doctor = await _unitOfWork.Doctors.Query().FirstOrDefaultAsync(d => d.UserId == userId);
                 if (doctor == null || appointment.DoctorId != doctor.Id)
-                    return ApiResponse<AppointmentDto>.Failure("غير مصرح لك بإلغاء هذا الموعد", 403);
+                    return ApiResponse<AppointmentDto>.Failure("You are not authorized to cancel this appointment", 403);
             }
 
             // Perform cancellation
@@ -458,18 +458,18 @@ namespace MedicalApp.API.Services.Implementations
             // Create notification for patient if registered
             if (appointment.PatientId.HasValue && appointment.Patient != null)
             {
-                string title = "إلغاء الحجز";
+                string title = "Booking cancelled";
                 string message = "";
 
                 if (user.Role == UserRole.Patient)
                 {
-                    message = $"تم إلغاء حجزك بنجاح بناءً على طلبك مع د. {appointment.Doctor.User.FullName} يوم {appointment.AppointmentDate:yyyy-MM-dd} الساعة {appointment.StartTime:hh\\:mm}.";
+                    message = $"Your booking with Dr. {appointment.Doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been cancelled at your request.";
                 }
                 else
                 {
-                    title = "إلغاء الحجز من قبل العيادة";
-                    string reasonText = string.IsNullOrWhiteSpace(dto.Reason) ? "غير محدد" : dto.Reason;
-                    message = $"نود إفادتكم بأنه تم إلغاء حجزكم مع د. {appointment.Doctor.User.FullName} يوم {appointment.AppointmentDate:yyyy-MM-dd} الساعة {appointment.StartTime:hh\\:mm} من قبل العيادة. السبب: {reasonText}.";
+                    title = "Booking cancelled by clinic";
+                    string reasonText = string.IsNullOrWhiteSpace(dto.Reason) ? "Not specified" : dto.Reason;
+                    message = $"We would like to inform you that your booking with Dr. {appointment.Doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been cancelled by the clinic. Reason: {reasonText}.";
                 }
 
                 var notification = new Notification
@@ -485,7 +485,7 @@ namespace MedicalApp.API.Services.Implementations
 
             _logger.LogInformation("Appointment {Id} has been Cancelled and Refunded", appointmentId);
 
-            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "تم إلغاء الموعد واسترداد قيمته بنجاح");
+            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "Appointment cancelled and refunded successfully");
         }
 
         // ===== Reschedule Appointment =====
@@ -499,24 +499,24 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
 
             if (appointment == null)
-                return ApiResponse<AppointmentDto>.Failure("الموعد غير موجود", 404);
+                return ApiResponse<AppointmentDto>.Failure("Appointment not found", 404);
 
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user == null)
-                return ApiResponse<AppointmentDto>.Failure("المستخدم غير موجود", 404);
+                return ApiResponse<AppointmentDto>.Failure("User not found", 404);
 
             // Authorization check
             if (user.Role == UserRole.Patient)
             {
                 var patient = await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == userId);
                 if (patient == null || appointment.PatientId != patient.Id)
-                    return ApiResponse<AppointmentDto>.Failure("غير مصرح لك بتعديل موعد هذا الحجز", 403);
+                    return ApiResponse<AppointmentDto>.Failure("You are not authorized to reschedule this booking", 403);
             }
             else if (user.Role == UserRole.Doctor)
             {
                 var doctor = await _unitOfWork.Doctors.Query().FirstOrDefaultAsync(d => d.UserId == userId);
                 if (doctor == null || appointment.DoctorId != doctor.Id)
-                    return ApiResponse<AppointmentDto>.Failure("غير مصرح لك بتعديل موعد هذا الحجز", 403);
+                    return ApiResponse<AppointmentDto>.Failure("You are not authorized to reschedule this booking", 403);
             }
 
             // Validate schedule
@@ -525,10 +525,10 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(s => s.DoctorId == appointment.DoctorId && s.DayOfWeek == dayOfWeek && s.IsActive);
 
             if (schedule == null)
-                return ApiResponse<AppointmentDto>.Failure("الطبيب ليس لديه مواعيد عمل متاحة في هذا اليوم الجديد", 400);
+                return ApiResponse<AppointmentDto>.Failure("Doctor has no available working hours on this new day", 400);
 
             if (dto.StartTime < schedule.StartTime || dto.StartTime >= schedule.EndTime)
-                return ApiResponse<AppointmentDto>.Failure("وقت الحجز الجديد يقع خارج ساعات عمل الطبيب الرسمية", 400);
+                return ApiResponse<AppointmentDto>.Failure("The new booking time is outside the doctor's official working hours", 400);
 
             using var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
@@ -541,7 +541,7 @@ namespace MedicalApp.API.Services.Implementations
                     && a.Status != AppointmentStatus.Cancelled);
 
             if (doubleBookingExists)
-                return ApiResponse<AppointmentDto>.Failure("عذراً، هذا الموعد الجديد محجوز بالفعل! يرجى اختيار موعد آخر", 409);
+                return ApiResponse<AppointmentDto>.Failure("Sorry, this new slot is already booked! Please choose another time", 409);
 
             // Prevent overlapping appointments for the same patient or family member
             var overlapExists = await _unitOfWork.Appointments.Query()
@@ -555,7 +555,7 @@ namespace MedicalApp.API.Services.Implementations
                     ));
 
             if (overlapExists)
-                return ApiResponse<AppointmentDto>.Failure("لا يمكنك إعادة جدولة هذا الموعد إلى وقت متداخل مع موعد آخر لنفس الشخص", 409);
+                return ApiResponse<AppointmentDto>.Failure("You cannot reschedule this appointment to a time that overlaps with another appointment for the same person", 409);
 
             var oldDateStr = appointment.AppointmentDate.ToString("yyyy-MM-dd");
             var oldTimeStr = appointment.StartTime.ToString(@"hh\:mm");
@@ -586,8 +586,8 @@ namespace MedicalApp.API.Services.Implementations
                 var patientNotification = new Notification
                 {
                     UserId = appointment.Patient.UserId,
-                    Title = "تعديل موعد الحجز",
-                    Message = $"تم تعديل موعد حجزك بنجاح مع د. {appointment.Doctor.User.FullName} ليصبح يوم {newDateStr} الساعة {newTimeStr} بدلاً من يوم {oldDateStr} الساعة {oldTimeStr}."
+                    Title = "Booking rescheduled",
+                    Message = $"Your booking with Dr. {appointment.Doctor.User.FullName} has been rescheduled to {newDateStr} at {newTimeStr} (previously {oldDateStr} at {oldTimeStr})."
                 };
                 await _unitOfWork.Notifications.AddAsync(patientNotification);
             }
@@ -596,8 +596,8 @@ namespace MedicalApp.API.Services.Implementations
             var doctorNotification = new Notification
             {
                 UserId = appointment.Doctor.UserId,
-                Title = "تعديل موعد حجز مريض",
-                Message = $"قام المريض {appointment.Patient?.User?.FullName ?? "خارجي"} بتعديل موعد حجزه ليصبح يوم {newDateStr} الساعة {newTimeStr} بدلاً من يوم {oldDateStr} الساعة {oldTimeStr}."
+                Title = "Patient booking rescheduled",
+                Message = $"Patient {appointment.Patient?.User?.FullName ?? "walk-in"} has rescheduled their booking to {newDateStr} at {newTimeStr} (previously {oldDateStr} at {oldTimeStr})."
             };
             await _unitOfWork.Notifications.AddAsync(doctorNotification);
 
@@ -612,8 +612,8 @@ namespace MedicalApp.API.Services.Implementations
                 var adminNotification = new Notification
                 {
                     UserId = adminUserId,
-                    Title = "تعديل موعد حجز مريض",
-                    Message = $"تم تعديل موعد حجز للمريض {appointment.Patient?.User?.FullName ?? "خارجي"} مع د. {appointment.Doctor.User.FullName} ليصبح يوم {newDateStr} الساعة {newTimeStr} بدلاً من يوم {oldDateStr} الساعة {oldTimeStr}."
+                    Title = "Patient booking rescheduled",
+                    Message = $"Patient {appointment.Patient?.User?.FullName ?? "walk-in"} has rescheduled their booking with Dr. {appointment.Doctor.User.FullName} to {newDateStr} at {newTimeStr} (previously {oldDateStr} at {oldTimeStr})."
                 };
                 await _unitOfWork.Notifications.AddAsync(adminNotification);
             }
@@ -623,7 +623,7 @@ namespace MedicalApp.API.Services.Implementations
 
             _logger.LogInformation("Appointment {Id} Rescheduled successfully to {Date} {Time}", appointmentId, newDateStr, newTimeStr);
 
-            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "تم تعديل موعد الحجز بنجاح وإرسال الإشعارات اللازمة");
+            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "Booking rescheduled successfully and notifications sent");
         }
 
         // ===== Update Appointment Status =====
@@ -637,11 +637,11 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
 
             if (appointment == null)
-                return ApiResponse<AppointmentDto>.Failure("الموعد غير موجود", 404);
+                return ApiResponse<AppointmentDto>.Failure("Appointment not found", 404);
 
             var doctor = await _unitOfWork.Doctors.Query().FirstOrDefaultAsync(d => d.UserId == userId);
             if (doctor == null || appointment.DoctorId != doctor.Id)
-                return ApiResponse<AppointmentDto>.Failure("غير مصرح لك بتغيير حالة هذا الموعد", 403);
+                return ApiResponse<AppointmentDto>.Failure("You are not authorized to change this appointment's status", 403);
 
             // ===== Enforce valid status transitions =====
             var validTransitions = new Dictionary<AppointmentStatus, List<AppointmentStatus>>
@@ -658,7 +658,7 @@ namespace MedicalApp.API.Services.Implementations
                 || !validTransitions[appointment.Status].Contains(dto.Status))
             {
                 return ApiResponse<AppointmentDto>.Failure(
-                    $"لا يمكن تغيير حالة الموعد من '{appointment.Status}' إلى '{dto.Status}'", 400);
+                    $"Cannot change appointment status from '{appointment.Status}' to '{dto.Status}'", 400);
             }
 
             // Update statuses
@@ -683,7 +683,7 @@ namespace MedicalApp.API.Services.Implementations
 
             _logger.LogInformation("Appointment status updated to {Status}", dto.Status);
 
-            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "تم تحديث حالة الموعد بنجاح");
+            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "Appointment status updated successfully");
         }
 
         // ===== Get Today's Queue =====
@@ -691,7 +691,7 @@ namespace MedicalApp.API.Services.Implementations
         {
             var doctor = await _unitOfWork.Doctors.Query().FirstOrDefaultAsync(d => d.UserId == userId);
             if (doctor == null)
-                return ApiResponse<List<AppointmentDto>>.Failure("حساب الطبيب غير موجود", 404);
+                return ApiResponse<List<AppointmentDto>>.Failure("Doctor account not found", 404);
 
             var todayQueue = await _unitOfWork.Appointments.Query()
                 .Include(a => a.Patient)
@@ -703,7 +703,7 @@ namespace MedicalApp.API.Services.Implementations
                 .ToListAsync();
 
             var dtos = todayQueue.Select(MapToDto).ToList();
-            return ApiResponse<List<AppointmentDto>>.Success(dtos, "تم استرجاع قائمة الطابور المباشر لليوم");
+            return ApiResponse<List<AppointmentDto>>.Success(dtos, "Live queue retrieved for today");
         }
 
         // ===== Get Patient Live Queue Tracker =====
@@ -715,15 +715,15 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
 
             if (appointment == null)
-                return ApiResponse<LiveQueueTrackerDto>.Failure("الموعد غير موجود", 404);
+                return ApiResponse<LiveQueueTrackerDto>.Failure("Appointment not found", 404);
 
             // Patient Auth check
             var patient = await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == userId);
             if (patient == null || appointment.PatientId != patient.Id)
-                return ApiResponse<LiveQueueTrackerDto>.Failure("غير مصرح لك بتعقب هذا الموعد", 403);
+                return ApiResponse<LiveQueueTrackerDto>.Failure("You are not authorized to track this appointment", 403);
 
             if (appointment.Status == AppointmentStatus.Cancelled)
-                return ApiResponse<LiveQueueTrackerDto>.Failure("هذا الموعد قد تم إلغاؤه بالفعل", 400);
+                return ApiResponse<LiveQueueTrackerDto>.Failure("This appointment has already been cancelled", 400);
 
             // Fetch currently serving patient in consultation
             var activeServing = await _unitOfWork.Appointments.Query()
@@ -776,7 +776,7 @@ namespace MedicalApp.API.Services.Implementations
                 DoctorName = appointment.Doctor.User.FullName
             };
 
-            return ApiResponse<LiveQueueTrackerDto>.Success(trackerDto, "تم تحديث معلومات طابور الحجز المباشر");
+            return ApiResponse<LiveQueueTrackerDto>.Success(trackerDto, "Live queue tracker updated");
         }
 
         // ===== Call Next Patient in Queue =====
@@ -784,7 +784,7 @@ namespace MedicalApp.API.Services.Implementations
         {
             var doctor = await _unitOfWork.Doctors.Query().FirstOrDefaultAsync(d => d.UserId == doctorUserId);
             if (doctor == null)
-                return ApiResponse<AppointmentDto>.Failure("حساب الطبيب غير موجود", 404);
+                return ApiResponse<AppointmentDto>.Failure("Doctor account not found", 404);
 
             var today = DateTime.Today;
 
@@ -815,7 +815,7 @@ namespace MedicalApp.API.Services.Implementations
             if (nextPatient == null)
             {
                 await _unitOfWork.CompleteAsync(); // Save currently serving completion
-                return ApiResponse<AppointmentDto>.Failure("لا يوجد مرضى في الانتظار اليوم", 404);
+                return ApiResponse<AppointmentDto>.Failure("No patients waiting today", 404);
             }
 
             // 3. Mark next patient as InConsultation / InProgress
@@ -827,13 +827,13 @@ namespace MedicalApp.API.Services.Implementations
 
             _logger.LogInformation("Doctor {Doc} called next patient Queue {Queue}", doctor.Id, nextPatient.QueueNumber);
 
-            return ApiResponse<AppointmentDto>.Success(MapToDto(nextPatient), $"تم مناداة المريض رقم {nextPatient.QueueNumber} للدخول");
+            return ApiResponse<AppointmentDto>.Success(MapToDto(nextPatient), $"Patient number {nextPatient.QueueNumber} has been called in");
         }
 
         // ===== Map Entity to DTO Helper =====
         private AppointmentDto MapToDto(Appointment app)
         {
-            string patientName = "مريض خارجي";
+            string patientName = "Walk-in patient";
             string phone = string.Empty;
 
             if (app.Patient != null && app.Patient.User != null)
@@ -868,7 +868,7 @@ namespace MedicalApp.API.Services.Implementations
             {
                 clinicId = activeClinic.Id;
                 clinicName = activeClinic.Name;
-                clinicAddress = $"{activeClinic.Area}، {activeClinic.Government}";
+                clinicAddress = $"{activeClinic.Area}, {activeClinic.Government}";
             }
 
             int? currentServingNumber = null;
@@ -943,7 +943,7 @@ namespace MedicalApp.API.Services.Implementations
             var admin = await _unitOfWork.ClinicAdmins.Query()
                 .FirstOrDefaultAsync(a => a.UserId == clinicAdminUserId);
             if (admin == null)
-                return ApiResponse<ClinicDashboardOverviewDto>.Failure("غير مصرح لك بنظرة عامة على العيادة كمسؤول", 403);
+                return ApiResponse<ClinicDashboardOverviewDto>.Failure("You are not authorized to view the clinic overview as an admin", 403);
 
             int clinicId = admin.ClinicId;
             var today = DateTime.Today;
@@ -974,7 +974,7 @@ namespace MedicalApp.API.Services.Implementations
                 TodayRevenueAmount = totalRevenue
             };
 
-            return ApiResponse<ClinicDashboardOverviewDto>.Success(overview, "تم استرجاع الإحصائيات بنجاح");
+            return ApiResponse<ClinicDashboardOverviewDto>.Success(overview, "Statistics retrieved successfully");
         }
 
         // ===== Get Clinic Today Queue =====
@@ -983,14 +983,14 @@ namespace MedicalApp.API.Services.Implementations
             var admin = await _unitOfWork.ClinicAdmins.Query()
                 .FirstOrDefaultAsync(a => a.UserId == clinicAdminUserId);
             if (admin == null)
-                return ApiResponse<List<AppointmentDto>>.Failure("غير مصرح لك باستدعاء طابور العيادة", 403);
+                return ApiResponse<List<AppointmentDto>>.Failure("You are not authorized to fetch the clinic queue as an admin", 403);
 
             int clinicId = admin.ClinicId;
 
             var isLinked = await _unitOfWork.DoctorClinics.Query()
                 .AnyAsync(dc => dc.ClinicId == clinicId && dc.DoctorId == doctorId && dc.IsActive);
             if (!isLinked)
-                return ApiResponse<List<AppointmentDto>>.Failure("الطبيب المحدد لا يعمل في هذه العيادة", 400);
+                return ApiResponse<List<AppointmentDto>>.Failure("Selected doctor does not work in this clinic", 400);
 
             var today = DateTime.Today;
 
@@ -1019,7 +1019,7 @@ namespace MedicalApp.API.Services.Implementations
                 .Select(MapToDto)
                 .ToList();
 
-            return ApiResponse<List<AppointmentDto>>.Success(sortedAppointments, "تم استرجاع قائمة الطابور بنجاح");
+            return ApiResponse<List<AppointmentDto>>.Success(sortedAppointments, "Queue retrieved successfully");
         }
 
         // ===== Start Checkup =====
@@ -1028,7 +1028,7 @@ namespace MedicalApp.API.Services.Implementations
             var admin = await _unitOfWork.ClinicAdmins.Query()
                 .FirstOrDefaultAsync(a => a.UserId == clinicAdminUserId);
             if (admin == null)
-                return ApiResponse<AppointmentDto>.Failure("غير مصرح لك ببدء كشف المرضى", 403);
+                return ApiResponse<AppointmentDto>.Failure("You are not authorized to start a patient checkup", 403);
 
             int clinicId = admin.ClinicId;
 
@@ -1041,17 +1041,17 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(a => a.Id == appointmentId);
 
             if (appointment == null)
-                return ApiResponse<AppointmentDto>.Failure("الحجز غير موجود", 404);
+                return ApiResponse<AppointmentDto>.Failure("Appointment not found", 404);
 
             var isLinked = appointment.Doctor.DoctorClinics.Any(dc => dc.ClinicId == clinicId && dc.IsActive);
             if (!isLinked)
-                return ApiResponse<AppointmentDto>.Failure("لا يملك مدير هذه العيادة صلاحية إدارة هذا الحجز", 403);
+                return ApiResponse<AppointmentDto>.Failure("This clinic admin does not have permission to manage this appointment", 403);
 
             if (appointment.Status == AppointmentStatus.Cancelled)
-                return ApiResponse<AppointmentDto>.Failure("هذا الحجز ملغى بالفعل ولا يمكن بدء الكشف له", 400);
+                return ApiResponse<AppointmentDto>.Failure("This appointment is already cancelled and cannot be started", 400);
 
             if (appointment.Status == AppointmentStatus.Completed)
-                return ApiResponse<AppointmentDto>.Failure("هذا الحجز مكتمل بالفعل", 400);
+                return ApiResponse<AppointmentDto>.Failure("This appointment is already completed", 400);
 
             var today = DateTime.Today;
 
@@ -1082,8 +1082,8 @@ namespace MedicalApp.API.Services.Implementations
                 var notification = new Notification
                 {
                     UserId = appointment.Patient.UserId,
-                    Title = "بدء الكشف",
-                    Message = $"لقد تم استدعاؤك الآن للدخول لعيادة د. {appointment.Doctor.User.FullName}."
+                    Title = "Checkup started",
+                    Message = $"You have been called in to Dr. {appointment.Doctor.User.FullName}'s clinic."
                 };
                 await _unitOfWork.Notifications.AddAsync(notification);
                 await _unitOfWork.CompleteAsync();
@@ -1091,7 +1091,7 @@ namespace MedicalApp.API.Services.Implementations
 
             _logger.LogInformation("Clinic Admin started checkup for appointment {Id}", appointmentId);
 
-            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "تم بدء الكشف واستدعاء المريض بنجاح");
+            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "Checkup started and patient called successfully");
         }
 
         // ===== Get Payments Dashboard =====
@@ -1100,7 +1100,7 @@ namespace MedicalApp.API.Services.Implementations
             var admin = await _unitOfWork.ClinicAdmins.Query()
                 .FirstOrDefaultAsync(a => a.UserId == clinicAdminUserId);
             if (admin == null)
-                return ApiResponse<PaymentsDashboardDto>.Failure("غير مصرح لك بنظرة عامة على لوحة المدفوعات كمسؤول", 403);
+                return ApiResponse<PaymentsDashboardDto>.Failure("You are not authorized to view the payments dashboard as an admin", 403);
 
             int clinicId = admin.ClinicId;
 
@@ -1162,7 +1162,7 @@ namespace MedicalApp.API.Services.Implementations
                 .OrderByDescending(a => a.AppointmentDate)
                 .ThenByDescending(a => a.StartTime)
                 .Select(a => {
-                    string name = "مريض خارجي";
+                    string name = "Walk-in patient";
                     if (a.Patient?.User != null)
                         name = a.Patient.User.FullName;
                     else if (!string.IsNullOrEmpty(a.OfflinePatientName))
@@ -1201,7 +1201,7 @@ namespace MedicalApp.API.Services.Implementations
                 RecentTransactions = recentTransactions
             };
 
-            return ApiResponse<PaymentsDashboardDto>.Success(dto, "تم استرجاع بيانات لوحة المدفوعات بنجاح");
+            return ApiResponse<PaymentsDashboardDto>.Success(dto, "Payments dashboard data retrieved successfully");
         }
     }
 }

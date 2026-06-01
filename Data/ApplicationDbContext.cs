@@ -3,9 +3,6 @@ using MedicalApp.API.Models.Entities;
 
 namespace MedicalApp.API.Data
 {
-    /// <summary>
-    /// Main database context for the Medical Application.
-    /// </summary>
     public class ApplicationDbContext : DbContext
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)

@@ -16,7 +16,7 @@ namespace MedicalApp.API.Controllers
                 ?? User.FindFirst("userId")?.Value;
 
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-                throw new UnauthorizedAccessException("غير مصرح لك بالوصول");
+                throw new UnauthorizedAccessException("You are not authorized to access this resource");
 
             return userId;
         }

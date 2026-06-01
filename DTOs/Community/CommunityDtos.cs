@@ -6,18 +6,18 @@ namespace MedicalApp.API.DTOs.Community
 {
     public class CreatePostDto
     {
-        [Required(ErrorMessage = "محتوى المنشور مطلوب")]
-        [MaxLength(2000, ErrorMessage = "لا يمكن أن يتجاوز المنشور 2000 حرف")]
+        [Required(ErrorMessage = "Post content is required")]
+        [MaxLength(2000, ErrorMessage = "Post content cannot exceed 2000 characters")]
         public string Content { get; set; } = string.Empty;
 
-        [MaxLength(100, ErrorMessage = "اسم التخصص لا يتجاوز 100 حرف")]
+        [MaxLength(100, ErrorMessage = "Specialization name cannot exceed 100 characters")]
         public string? Specialization { get; set; } // The specialization chip selected e.g. Neurology, Dentistry, or null/empty for All/General
     }
 
     public class CreateCommentDto
     {
-        [Required(ErrorMessage = "محتوى التعليق مطلوب")]
-        [MaxLength(1000, ErrorMessage = "لا يمكن أن يتجاوز التعليق 1000 حرف")]
+        [Required(ErrorMessage = "Comment content is required")]
+        [MaxLength(1000, ErrorMessage = "Comment cannot exceed 1000 characters")]
         public string Content { get; set; } = string.Empty;
     }
 

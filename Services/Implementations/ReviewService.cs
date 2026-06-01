@@ -20,12 +20,12 @@ namespace MedicalApp.API.Services.Implementations
             var patient = await _unitOfWork.Patients.Query().Include(p => p.User)
                 .FirstOrDefaultAsync(p => p.UserId == userId);
             if (patient == null)
-                return ApiResponse<ReviewDto>.Failure("ملف المريض غير موجود", 404);
+                return ApiResponse<ReviewDto>.Failure("Patient profile not found", 404);
 
             var doctor = await _unitOfWork.Doctors.Query().Include(d => d.User)
                 .FirstOrDefaultAsync(d => d.Id == dto.DoctorId);
             if (doctor == null)
-                return ApiResponse<ReviewDto>.Failure("الطبيب غير موجود", 404);
+                return ApiResponse<ReviewDto>.Failure("Doctor not found", 404);
 
             // Check if already reviewed this appointment
             if (dto.AppointmentId.HasValue)
@@ -33,7 +33,7 @@ namespace MedicalApp.API.Services.Implementations
                 var existingReview = await _unitOfWork.Reviews.Query()
                     .AnyAsync(r => r.AppointmentId == dto.AppointmentId && r.PatientId == patient.Id);
                 if (existingReview)
-                    return ApiResponse<ReviewDto>.Failure("لقد قمت بتقييم هذا الموعد بالفعل", 409);
+                    return ApiResponse<ReviewDto>.Failure("You have already reviewed this appointment", 409);
             }
 
             var review = new Models.Entities.Review
@@ -72,7 +72,7 @@ namespace MedicalApp.API.Services.Implementations
                 CreatedAt = review.CreatedAt
             };
 
-            return ApiResponse<ReviewDto>.Success(result, "تم إضافة التقييم بنجاح", 201);
+            return ApiResponse<ReviewDto>.Success(result, "Review added successfully", 201);
         }
 
         public async Task<ApiResponse<List<ReviewDto>>> GetDoctorReviewsAsync(int doctorId)

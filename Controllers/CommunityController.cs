@@ -36,9 +36,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Add a comment to a community post.
-        /// </summary>
         [HttpPost("posts/{postId}/comments")]
         public async Task<IActionResult> CreateComment(int postId, [FromBody] CreateCommentDto dto)
         {
@@ -46,9 +43,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Get all comments for a community post.
-        /// </summary>
         [HttpGet("posts/{postId}/comments")]
         public async Task<IActionResult> GetPostComments(int postId)
         {

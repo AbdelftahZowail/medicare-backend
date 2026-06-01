@@ -80,13 +80,13 @@ namespace MedicalApp.API.Services.Implementations
 
                     var userId = appointment.Patient.UserId;
                     var appointmentTimeStr = appointment.StartTime.ToString(@"hh\:mm");
-                    var expectedMessagePart = $"الساعة {appointmentTimeStr}";
+                    var expectedMessagePart = $"at {appointmentTimeStr}";
 
                     // Check if reminder notification already exists for this appointment
                     // to prevent duplicate notifications if worker runs multiple times in the window.
                     var alreadyNotified = await dbContext.Notifications
-                        .AnyAsync(n => n.UserId == userId 
-                            && n.Title == "تنبيه قبل الحجز بساعة" 
+                        .AnyAsync(n => n.UserId == userId
+                            && n.Title == "1-hour appointment reminder"
                             && n.Message.Contains(expectedMessagePart)
                             && n.Message.Contains(appointment.Doctor.User.FullName));
 
@@ -95,8 +95,8 @@ namespace MedicalApp.API.Services.Implementations
                         var notification = new Notification
                         {
                             UserId = userId,
-                            Title = "تنبيه قبل الحجز بساعة",
-                            Message = $"تنبيه: ميعاد حجزك مع د. {appointment.Doctor.User.FullName} بعد ساعة من الآن (اليوم الساعة {appointmentTimeStr}). يرجى الحضور في الموعد المحدد."
+                            Title = "1-hour appointment reminder",
+                            Message = $"Reminder: your appointment with Dr. {appointment.Doctor.User.FullName} is in one hour (today at {appointmentTimeStr}). Please arrive on time."
                         };
 
                         await dbContext.Notifications.AddAsync(notification);

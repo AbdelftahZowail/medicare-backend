@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MedicalApp.API.Models.Entities
 {
-    /// <summary>
-    /// Doctor profile linked to a User and belongs to a Clinic.
-    /// </summary>
     public class Doctor : BaseEntity
     {
         [Required]
@@ -23,9 +20,6 @@ namespace MedicalApp.API.Models.Entities
         [MaxLength(50)]
         public string? LicenseNumber { get; set; }
 
-        /// <summary>
-        /// URL of the uploaded license image.
-        /// </summary>
         [MaxLength(500)]
         public string? LicenseImageUrl { get; set; }
 

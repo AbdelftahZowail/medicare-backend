@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MedicalApp.API.Models.Entities
 {
-    /// <summary>
-    /// Notification entity to store in-app notifications for patients, doctors, or clinic admins.
-    /// </summary>
     public class Notification : BaseEntity
     {
         [Required]

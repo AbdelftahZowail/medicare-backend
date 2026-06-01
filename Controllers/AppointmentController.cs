@@ -72,9 +72,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Get appointment by ID.
-        /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -82,9 +79,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Cancel an appointment.
-        /// </summary>
         [HttpPut("{id}/cancel")]
         public async Task<IActionResult> Cancel(int id, [FromBody] CancelAppointmentDto dto)
         {
@@ -92,9 +86,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Reschedule an appointment.
-        /// </summary>
         [HttpPut("{id}/reschedule")]
         public async Task<IActionResult> Reschedule(int id, [FromBody] RescheduleAppointmentDto dto)
         {
@@ -102,9 +93,6 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
-        /// <summary>
-        /// Update the status of an appointment.
-        /// </summary>
         [HttpPut("{id}/status")]
         [Authorize(Roles = "Doctor")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateAppointmentStatusDto dto)

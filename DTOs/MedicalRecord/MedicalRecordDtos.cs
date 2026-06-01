@@ -46,12 +46,12 @@ namespace MedicalApp.API.DTOs.MedicalRecord
 
     public class CreateMedicalRecordDto
     {
-        [Required(ErrorMessage = "معرف المريض مطلوب")]
+        [Required(ErrorMessage = "Patient ID is required")]
         public int PatientId { get; set; }
 
         public int? AppointmentId { get; set; }
 
-        [Required(ErrorMessage = "التشخيص مطلوب")]
+        [Required(ErrorMessage = "Diagnosis is required")]
         [MaxLength(500)]
         public string Diagnosis { get; set; } = string.Empty;
 

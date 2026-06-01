@@ -25,16 +25,16 @@ namespace MedicalApp.API.Controllers
         public async Task<IActionResult> UploadLicense(IFormFile file)
         {
             if (file == null || file.Length == 0)
-                return BadRequest(new { isSuccess = false, message = "الملف مطلوب" });
+                return BadRequest(new { isSuccess = false, message = "File is required" });
 
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
             var extension = Path.GetExtension(file.FileName).ToLower();
 
             if (!allowedExtensions.Contains(extension))
-                return BadRequest(new { isSuccess = false, message = "نوع الملف غير مدعوم. الأنواع المدعومة: jpg, jpeg, png, pdf" });
+                return BadRequest(new { isSuccess = false, message = "Unsupported file type. Supported types: jpg, jpeg, png, pdf" });
 
             if (file.Length > 5 * 1024 * 1024) // 5MB max
-                return BadRequest(new { isSuccess = false, message = "حجم الملف يجب ألا يتجاوز 5 ميجابايت" });
+                return BadRequest(new { isSuccess = false, message = "File size must not exceed 5 MB" });
 
             var uploadsDir = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads", "licenses");
             Directory.CreateDirectory(uploadsDir);
@@ -49,26 +49,23 @@ namespace MedicalApp.API.Controllers
 
             var fileUrl = $"/uploads/licenses/{fileName}";
 
-            return Ok(new { isSuccess = true, message = "تم رفع الملف بنجاح", data = new { url = fileUrl } });
+            return Ok(new { isSuccess = true, message = "File uploaded successfully", data = new { url = fileUrl } });
         }
 
-        /// <summary>
-        /// Upload a profile image.
-        /// </summary>
         [HttpPost("profile-image")]
         public async Task<IActionResult> UploadProfileImage(IFormFile file)
         {
             if (file == null || file.Length == 0)
-                return BadRequest(new { isSuccess = false, message = "الملف مطلوب" });
+                return BadRequest(new { isSuccess = false, message = "File is required" });
 
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
             var extension = Path.GetExtension(file.FileName).ToLower();
 
             if (!allowedExtensions.Contains(extension))
-                return BadRequest(new { isSuccess = false, message = "نوع الملف غير مدعوم. الأنواع المدعومة: jpg, jpeg, png" });
+                return BadRequest(new { isSuccess = false, message = "Unsupported file type. Supported types: jpg, jpeg, png" });
 
             if (file.Length > 3 * 1024 * 1024) // 3MB max
-                return BadRequest(new { isSuccess = false, message = "حجم الملف يجب ألا يتجاوز 3 ميجابايت" });
+                return BadRequest(new { isSuccess = false, message = "File size must not exceed 3 MB" });
 
             var uploadsDir = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads", "profiles");
             Directory.CreateDirectory(uploadsDir);
@@ -83,7 +80,7 @@ namespace MedicalApp.API.Controllers
 
             var fileUrl = $"/uploads/profiles/{fileName}";
 
-            return Ok(new { isSuccess = true, message = "تم رفع الصورة بنجاح", data = new { url = fileUrl } });
+            return Ok(new { isSuccess = true, message = "Image uploaded successfully", data = new { url = fileUrl } });
         }
     }
 }

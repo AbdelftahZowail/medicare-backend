@@ -4,9 +4,6 @@ using MedicalApp.API.Models.Enums;
 
 namespace MedicalApp.API.Models.Entities
 {
-    /// <summary>
-    /// Appointment between a Patient and a Doctor.
-    /// </summary>
     public class Appointment : BaseEntity
     {
         public int? PatientId { get; set; }

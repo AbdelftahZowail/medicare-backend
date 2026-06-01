@@ -24,7 +24,7 @@ namespace MedicalApp.API.DTOs.Clinic
 
     public class CreateClinicDto
     {
-        [Required(ErrorMessage = "اسم العيادة مطلوب")]
+        [Required(ErrorMessage = "Clinic name is required")]
         [MaxLength(200)]
         public string Name { get; set; } = string.Empty;
 
@@ -34,11 +34,11 @@ namespace MedicalApp.API.DTOs.Clinic
         [MaxLength(500)]
         public string? Description { get; set; }
 
-        [Required(ErrorMessage = "المحافظة مطلوبة")]
+        [Required(ErrorMessage = "Government is required")]
         [MaxLength(100)]
         public string Government { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "المنطقة مطلوبة")]
+        [Required(ErrorMessage = "Area is required")]
         [MaxLength(100)]
         public string Area { get; set; } = string.Empty;
 

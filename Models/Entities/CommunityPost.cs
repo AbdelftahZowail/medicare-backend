@@ -4,9 +4,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MedicalApp.API.Models.Entities
 {
-    /// <summary>
-    /// Represents a public community post/question shared by a User (Patient or Doctor).
-    /// </summary>
     public class CommunityPost : BaseEntity
     {
         [Required]

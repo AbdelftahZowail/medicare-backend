@@ -3,9 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MedicalApp.API.Models.Entities
 {
-    /// <summary>
-    /// Clinic administrator linked to a User and a Clinic.
-    /// </summary>
     public class ClinicAdmin : BaseEntity
     {
         [Required]

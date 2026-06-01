@@ -48,12 +48,12 @@ namespace MedicalApp.API.Services.Implementations
                 .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId);
 
             if (notification == null)
-                return ApiResponse.Failure("الإشعار غير موجود", 404);
+                return ApiResponse.Failure("Notification not found", 404);
 
             notification.IsRead = true;
             await _unitOfWork.CompleteAsync();
 
-            return ApiResponse.Success("تم تحديث حالة الإشعار بنجاح");
+            return ApiResponse.Success("Notification status updated successfully");
         }
 
         public async Task<ApiResponse> CreateNotificationAsync(int userId, string title, string message)
@@ -69,7 +69,7 @@ namespace MedicalApp.API.Services.Implementations
             await _unitOfWork.Notifications.AddAsync(notification);
             await _unitOfWork.CompleteAsync();
 
-            return ApiResponse.Success("تم إنشاء الإشعار بنجاح");
+            return ApiResponse.Success("Notification created successfully");
         }
     }
 }
