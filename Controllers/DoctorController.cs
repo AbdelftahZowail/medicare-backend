@@ -19,9 +19,24 @@ namespace MedicalApp.API.Controllers
         /// <summary>
         /// Get all doctors (public - for patients to browse with filters).
         /// </summary>
+        /// <summary>
+        /// Get all doctors (public - for patients to browse with filters).
+        /// </summary>
+        [HttpGet("nearby", Order = 0)]
+        public async Task<IActionResult> GetNearby(
+            [FromQuery] double lat,
+            [FromQuery] double lng,
+            [FromQuery] double radiusKm = 5,
+            [FromQuery] string? specialization = null,
+            [FromQuery] string? search = null)
+        {
+            var result = await _doctorService.GetNearbyDoctorsAsync(lat, lng, radiusKm, specialization, search);
+            return StatusCode(result.StatusCode, result);
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetAll(
-            [FromQuery] string? specialization, 
+            [FromQuery] string? specialization,
             [FromQuery] string? search,
             [FromQuery] string? government,
             [FromQuery] string? area,
@@ -29,11 +44,13 @@ namespace MedicalApp.API.Controllers
             [FromQuery] MedicalApp.API.Models.Enums.Gender? gender,
             [FromQuery] decimal? minFee,
             [FromQuery] decimal? maxFee,
-            [FromQuery] double? minRating)
+            [FromQuery] double? minRating,
+            [FromQuery] double? userLat = null,
+            [FromQuery] double? userLng = null)
         {
             var result = await _doctorService.GetAllDoctorsAsync(
-                specialization, 
-                search, 
+                specialization,
+                search,
                 government,
                 area,
                 appointmentDay,
@@ -41,7 +58,9 @@ namespace MedicalApp.API.Controllers
                 minFee,
                 maxFee,
                 minRating,
-                GetOptionalUserId());
+                GetOptionalUserId(),
+                userLat,
+                userLng);
             return StatusCode(result.StatusCode, result);
         }
 
@@ -59,9 +78,11 @@ namespace MedicalApp.API.Controllers
         /// Get popular doctors ordered by actual rating (public - for home screen).
         /// </summary>
         [HttpGet("popular")]
-        public async Task<IActionResult> GetPopular()
+        public async Task<IActionResult> GetPopular(
+            [FromQuery] double? userLat = null,
+            [FromQuery] double? userLng = null)
         {
-            var result = await _doctorService.GetPopularDoctorsAsync(GetOptionalUserId());
+            var result = await _doctorService.GetPopularDoctorsAsync(GetOptionalUserId(), userLat, userLng);
             return StatusCode(result.StatusCode, result);
         }
 

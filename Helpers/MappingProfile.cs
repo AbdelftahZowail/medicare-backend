@@ -20,6 +20,7 @@ namespace MedicalApp.API.Helpers
                 .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User.PhoneNumber))
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User.Email));
 
+            CreateMap<Doctor, DoctorListItemDto>();
             CreateMap<Clinic, ClinicDto>();
 
             CreateMap<Appointment, AppointmentDto>()

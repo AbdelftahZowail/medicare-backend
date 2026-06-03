@@ -21,6 +21,8 @@ namespace MedicalApp.API.DTOs.Doctor
         public bool IsAvailable { get; set; }
         public int? ClinicId { get; set; }
         public string? ClinicName { get; set; }
+        public double? ClinicLatitude { get; set; }
+        public double? ClinicLongitude { get; set; }
 
         // New profile fields
         public string? Degree { get; set; }
@@ -31,6 +33,9 @@ namespace MedicalApp.API.DTOs.Doctor
         public List<string> Languages { get; set; } = new();
         public List<string> AssociatedClinics { get; set; } = new();
         public string? QrCodeKey { get; set; }
+
+        // Distinct registered patients seen by this doctor (excludes cancelled + walk-ins).
+        public int TotalPatients { get; set; }
     }
 
     public class UpdateDoctorProfileDto
@@ -70,6 +75,12 @@ namespace MedicalApp.API.DTOs.Doctor
         public bool IsFavorited { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        public double? DistanceKm { get; set; }
+    }
+
+    public class NearbyDoctorDto : DoctorListItemDto
+    {
+        public int? ClinicIdForLocation { get; set; }
     }
 
     public class ClinicDoctorDetailsDto

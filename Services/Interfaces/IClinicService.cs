@@ -7,6 +7,12 @@ namespace MedicalApp.API.Services.Interfaces
     public interface IClinicService
     {
         Task<ApiResponse<List<ClinicDto>>> GetAllClinicsAsync(string? search = null);
+        Task<ApiResponse<List<NearbyClinicDto>>> GetNearbyClinicsAsync(
+            double lat,
+            double lng,
+            double radiusKm = 5,
+            string? specialization = null,
+            string? search = null);
         Task<ApiResponse<ClinicDto>> GetClinicByIdAsync(int clinicId);
         Task<ApiResponse<ClinicDto>> CreateClinicAsync(int userId, CreateClinicDto dto);
         Task<ApiResponse<ClinicDto>> UpdateClinicAsync(int clinicId, int userId, UpdateClinicDto dto);

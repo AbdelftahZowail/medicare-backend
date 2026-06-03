@@ -22,6 +22,18 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
+        [HttpGet("nearby", Order = 0)]
+        public async Task<IActionResult> GetNearby(
+            [FromQuery] double lat,
+            [FromQuery] double lng,
+            [FromQuery] double radiusKm = 5,
+            [FromQuery] string? specialization = null,
+            [FromQuery] string? search = null)
+        {
+            var result = await _clinicService.GetNearbyClinicsAsync(lat, lng, radiusKm, specialization, search);
+            return StatusCode(result.StatusCode, result);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {

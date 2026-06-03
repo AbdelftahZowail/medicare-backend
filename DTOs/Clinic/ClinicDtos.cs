@@ -59,6 +59,12 @@ namespace MedicalApp.API.DTOs.Clinic
         public double? Longitude { get; set; }
     }
 
+    public class NearbyClinicDto : ClinicDto
+    {
+        public double DistanceKm { get; set; }
+        public int MatchingDoctorsCount { get; set; }
+    }
+
     public class UpdateClinicDto
     {
         [MaxLength(200)]

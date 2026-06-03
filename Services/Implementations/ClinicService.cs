@@ -48,6 +48,65 @@ namespace MedicalApp.API.Services.Implementations
             return ApiResponse<List<ClinicDto>>.Success(clinics);
         }
 
+        public async Task<ApiResponse<List<NearbyClinicDto>>> GetNearbyClinicsAsync(
+            double lat,
+            double lng,
+            double radiusKm = 5,
+            string? specialization = null,
+            string? search = null)
+        {
+            if (double.IsNaN(lat) || double.IsNaN(lng) ||
+                double.IsInfinity(lat) || double.IsInfinity(lng) ||
+                lat < -90 || lat > 90 || lng < -180 || lng > 180)
+            {
+                return ApiResponse<List<NearbyClinicDto>>.Success(new List<NearbyClinicDto>());
+            }
+
+            var query = _unitOfWork.Clinics.Query()
+                .Include(c => c.DoctorClinics).ThenInclude(dc => dc.Doctor)
+                .Where(c => c.IsActive && c.Latitude != null && c.Longitude != null);
+
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(c => c.Name.Contains(search)
+                    || (c.Government != null && c.Government.Contains(search))
+                    || (c.Area != null && c.Area.Contains(search)));
+
+            if (!string.IsNullOrEmpty(specialization))
+                query = query.Where(c => c.DoctorClinics.Any(dc =>
+                    dc.IsActive && dc.Doctor.Specialization == specialization));
+
+            var clinics = await query.ToListAsync();
+
+            var result = clinics
+                .Select(c => new NearbyClinicDto
+                {
+                    Id = c.Id,
+                    Name = c.Name,
+                    FacilityId = c.FacilityId,
+                    Description = c.Description,
+                    Government = c.Government,
+                    Area = c.Area,
+                    Address = c.Address,
+                    LinkMap = c.LinkMap,
+                    PhoneNumber = c.PhoneNumber,
+                    Email = c.Email,
+                    LogoUrl = c.LogoUrl,
+                    LicenseImageUrl = c.LicenseImageUrl,
+                    Latitude = c.Latitude,
+                    Longitude = c.Longitude,
+                    IsActive = c.IsActive,
+                    DoctorsCount = c.DoctorClinics?.Count(dc => dc.IsActive) ?? 0,
+                    DistanceKm = GeoUtils.HaversineKm(lat, lng, c.Latitude!.Value, c.Longitude!.Value),
+                    MatchingDoctorsCount = c.DoctorClinics?.Count(dc =>
+                        dc.IsActive && (specialization == null || dc.Doctor.Specialization == specialization)) ?? 0
+                })
+                .Where(c => c.DistanceKm <= radiusKm)
+                .OrderBy(c => c.DistanceKm)
+                .ToList();
+
+            return ApiResponse<List<NearbyClinicDto>>.Success(result);
+        }
+
         public async Task<ApiResponse<ClinicDto>> GetClinicByIdAsync(int clinicId)
         {
             var clinic = await _unitOfWork.Clinics.Query()

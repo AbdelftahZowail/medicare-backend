@@ -27,8 +27,8 @@ namespace MedicalApp.API.Services.Implementations
         }
 
         public async Task<ApiResponse<List<DoctorListItemDto>>> GetAllDoctorsAsync(
-            string? specialization = null, 
-            string? search = null, 
+            string? specialization = null,
+            string? search = null,
             string? government = null,
             string? area = null,
             string? appointmentDay = null,
@@ -36,9 +36,11 @@ namespace MedicalApp.API.Services.Implementations
             decimal? minFee = null,
             decimal? maxFee = null,
             double? minRating = null,
-            int? currentPatientUserId = null)
+            int? currentPatientUserId = null,
+            double? userLat = null,
+            double? userLng = null)
         {
-            var patient = currentPatientUserId.HasValue 
+            var patient = currentPatientUserId.HasValue
                 ? await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == currentPatientUserId.Value)
                 : null;
 
@@ -102,8 +104,14 @@ namespace MedicalApp.API.Services.Implementations
             }
 
             var doctors = await query.ToListAsync();
-            
-            var result = doctors.Select(d => 
+
+            var hasUserCoords = userLat.HasValue && userLng.HasValue
+                && !double.IsNaN(userLat.Value) && !double.IsNaN(userLng.Value)
+                && !double.IsInfinity(userLat.Value) && !double.IsInfinity(userLng.Value)
+                && userLat.Value >= -90 && userLat.Value <= 90
+                && userLng.Value >= -180 && userLng.Value <= 180;
+
+            var result = doctors.Select(d =>
             {
                 var dto = _mapper.Map<DoctorListItemDto>(d);
                 dto.FullName = d.User.FullName;
@@ -111,22 +119,31 @@ namespace MedicalApp.API.Services.Implementations
                 dto.ClinicName = string.Join(", ", d.DoctorClinics.Where(dc => dc.IsActive).Select(dc => dc.Clinic.Name));
                 dto.ClinicArea = string.Join(", ", d.DoctorClinics.Where(dc => dc.IsActive).Select(dc => dc.Clinic.Area));
                 dto.IsFavorited = favoriteDoctorIds.Contains(d.Id);
-                
+
                 var activeClinic = d.DoctorClinics.FirstOrDefault(dc => dc.IsActive)?.Clinic;
                 if (activeClinic != null)
                 {
                     dto.Latitude = activeClinic.Latitude;
                     dto.Longitude = activeClinic.Longitude;
+                    if (hasUserCoords && activeClinic.Latitude.HasValue && activeClinic.Longitude.HasValue)
+                    {
+                        dto.DistanceKm = GeoUtils.HaversineKm(
+                            userLat!.Value, userLng!.Value,
+                            activeClinic.Latitude.Value, activeClinic.Longitude.Value);
+                    }
                 }
                 return dto;
             }).ToList();
 
+            if (hasUserCoords)
+                result = result.OrderBy(d => d.DistanceKm ?? double.MaxValue).ToList();
+
             return ApiResponse<List<DoctorListItemDto>>.Success(result);
         }
 
-        public async Task<ApiResponse<List<DoctorListItemDto>>> GetPopularDoctorsAsync(int? currentPatientUserId = null)
+        public async Task<ApiResponse<List<DoctorListItemDto>>> GetPopularDoctorsAsync(int? currentPatientUserId = null, double? userLat = null, double? userLng = null)
         {
-            var patient = currentPatientUserId.HasValue 
+            var patient = currentPatientUserId.HasValue
                 ? await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == currentPatientUserId.Value)
                 : null;
 
@@ -149,8 +166,14 @@ namespace MedicalApp.API.Services.Implementations
                 .Take(10); // Get top 10 doctors based on actual rating
 
             var doctors = await query.ToListAsync();
-            
-            var result = doctors.Select(d => 
+
+            var hasUserCoords = userLat.HasValue && userLng.HasValue
+                && !double.IsNaN(userLat.Value) && !double.IsNaN(userLng.Value)
+                && !double.IsInfinity(userLat.Value) && !double.IsInfinity(userLng.Value)
+                && userLat.Value >= -90 && userLat.Value <= 90
+                && userLng.Value >= -180 && userLng.Value <= 180;
+
+            var result = doctors.Select(d =>
             {
                 var dto = _mapper.Map<DoctorListItemDto>(d);
                 dto.FullName = d.User.FullName;
@@ -158,17 +181,96 @@ namespace MedicalApp.API.Services.Implementations
                 dto.ClinicName = string.Join(", ", d.DoctorClinics.Where(dc => dc.IsActive).Select(dc => dc.Clinic.Name));
                 dto.ClinicArea = string.Join(", ", d.DoctorClinics.Where(dc => dc.IsActive).Select(dc => dc.Clinic.Area));
                 dto.IsFavorited = favoriteDoctorIds.Contains(d.Id);
-                
+
                 var activeClinic = d.DoctorClinics.FirstOrDefault(dc => dc.IsActive)?.Clinic;
                 if (activeClinic != null)
                 {
                     dto.Latitude = activeClinic.Latitude;
                     dto.Longitude = activeClinic.Longitude;
+                    if (hasUserCoords && activeClinic.Latitude.HasValue && activeClinic.Longitude.HasValue)
+                    {
+                        dto.DistanceKm = GeoUtils.HaversineKm(
+                            userLat!.Value, userLng!.Value,
+                            activeClinic.Latitude.Value, activeClinic.Longitude.Value);
+                    }
                 }
                 return dto;
             }).ToList();
 
             return ApiResponse<List<DoctorListItemDto>>.Success(result);
+        }
+
+        public async Task<ApiResponse<List<NearbyDoctorDto>>> GetNearbyDoctorsAsync(
+            double lat,
+            double lng,
+            double radiusKm = 5,
+            string? specialization = null,
+            string? search = null)
+        {
+            if (double.IsNaN(lat) || double.IsNaN(lng) ||
+                double.IsInfinity(lat) || double.IsInfinity(lng) ||
+                lat < -90 || lat > 90 || lng < -180 || lng > 180)
+            {
+                return ApiResponse<List<NearbyDoctorDto>>.Success(new List<NearbyDoctorDto>());
+            }
+
+            var query = _unitOfWork.Doctors.Query()
+                .Include(d => d.User)
+                .Include(d => d.DoctorClinics)
+                    .ThenInclude(dc => dc.Clinic)
+                .Where(d => d.User.IsActive
+                    && d.DoctorClinics.Any(dc => dc.IsActive
+                        && dc.Clinic.Latitude != null
+                        && dc.Clinic.Longitude != null));
+
+            if (!string.IsNullOrEmpty(specialization))
+                query = query.Where(d => d.Specialization == specialization);
+
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(d => d.User.FullName.Contains(search) || d.Specialization.Contains(search));
+
+            var doctors = await query.ToListAsync();
+
+            var result = new List<NearbyDoctorDto>();
+
+            foreach (var d in doctors)
+            {
+                var locationClinic = d.DoctorClinics
+                    .Where(dc => dc.IsActive
+                        && dc.Clinic.Latitude.HasValue
+                        && dc.Clinic.Longitude.HasValue)
+                    .OrderBy(dc => dc.Id)
+                    .Select(dc => dc.Clinic)
+                    .FirstOrDefault();
+
+                if (locationClinic == null) continue;
+
+                var distance = GeoUtils.HaversineKm(lat, lng, locationClinic.Latitude!.Value, locationClinic.Longitude!.Value);
+                if (distance > radiusKm) continue;
+
+                var dto = new NearbyDoctorDto
+                {
+                    Id = d.Id,
+                    FullName = d.User.FullName,
+                    Specialization = d.Specialization,
+                    ProfileImageUrl = d.User.ProfileImageUrl,
+                    ConsultationFee = d.ConsultationFee,
+                    AverageRating = d.AverageRating,
+                    TotalReviews = d.TotalReviews,
+                    IsAvailable = d.IsAvailable,
+                    ClinicName = string.Join(", ", d.DoctorClinics.Where(dc => dc.IsActive).Select(dc => dc.Clinic.Name)),
+                    ClinicArea = string.Join(", ", d.DoctorClinics.Where(dc => dc.IsActive).Select(dc => dc.Clinic.Area)),
+                    IsFavorited = false,
+                    Latitude = locationClinic.Latitude,
+                    Longitude = locationClinic.Longitude,
+                    DistanceKm = distance,
+                    ClinicIdForLocation = locationClinic.Id
+                };
+                result.Add(dto);
+            }
+
+            return ApiResponse<List<NearbyDoctorDto>>.Success(
+                result.OrderBy(r => r.DistanceKm).ToList());
         }
 
         public async Task<ApiResponse<DoctorProfileDto>> GetDoctorByIdAsync(int doctorId)
@@ -202,13 +304,23 @@ namespace MedicalApp.API.Services.Implementations
                 .Where(dc => dc.IsActive)
                 .Select(dc => dc.Clinic.Name)
                 .ToList();
-            
+
             var activeClinic = doctor.DoctorClinics.FirstOrDefault(dc => dc.IsActive)?.Clinic;
             if (activeClinic != null)
             {
                 dto.ClinicId = activeClinic.Id;
                 dto.ClinicName = activeClinic.Name;
+                dto.ClinicLatitude = activeClinic.Latitude;
+                dto.ClinicLongitude = activeClinic.Longitude;
             }
+
+            dto.TotalPatients = await _unitOfWork.Appointments.Query()
+                .Where(a => a.DoctorId == doctor.Id
+                         && a.PatientId != null
+                         && a.Status != AppointmentStatus.Cancelled)
+                .Select(a => a.PatientId!.Value)
+                .Distinct()
+                .CountAsync();
 
             return ApiResponse<DoctorProfileDto>.Success(dto);
         }
@@ -250,7 +362,17 @@ namespace MedicalApp.API.Services.Implementations
             {
                 dto.ClinicId = activeClinic.Id;
                 dto.ClinicName = activeClinic.Name;
+                dto.ClinicLatitude = activeClinic.Latitude;
+                dto.ClinicLongitude = activeClinic.Longitude;
             }
+
+            dto.TotalPatients = await _unitOfWork.Appointments.Query()
+                .Where(a => a.DoctorId == doctor.Id
+                         && a.PatientId != null
+                         && a.Status != AppointmentStatus.Cancelled)
+                .Select(a => a.PatientId!.Value)
+                .Distinct()
+                .CountAsync();
 
             return ApiResponse<DoctorProfileDto>.Success(dto);
         }

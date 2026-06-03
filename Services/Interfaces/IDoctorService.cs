@@ -10,8 +10,8 @@ namespace MedicalApp.API.Services.Interfaces
     public interface IDoctorService
     {
         Task<ApiResponse<List<DoctorListItemDto>>> GetAllDoctorsAsync(
-            string? specialization = null, 
-            string? search = null, 
+            string? specialization = null,
+            string? search = null,
             string? government = null,
             string? area = null,
             string? appointmentDay = null,
@@ -19,8 +19,16 @@ namespace MedicalApp.API.Services.Interfaces
             decimal? minFee = null,
             decimal? maxFee = null,
             double? minRating = null,
-            int? currentPatientUserId = null);
-        Task<ApiResponse<List<DoctorListItemDto>>> GetPopularDoctorsAsync(int? currentPatientUserId = null);
+            int? currentPatientUserId = null,
+            double? userLat = null,
+            double? userLng = null);
+        Task<ApiResponse<List<DoctorListItemDto>>> GetPopularDoctorsAsync(int? currentPatientUserId = null, double? userLat = null, double? userLng = null);
+        Task<ApiResponse<List<NearbyDoctorDto>>> GetNearbyDoctorsAsync(
+            double lat,
+            double lng,
+            double radiusKm = 5,
+            string? specialization = null,
+            string? search = null);
         Task<ApiResponse<DoctorProfileDto>> GetDoctorByIdAsync(int doctorId);
         Task<ApiResponse<DoctorProfileDto>> GetProfileAsync(int userId);
         Task<ApiResponse<DoctorProfileDto>> UpdateProfileAsync(int userId, UpdateDoctorProfileDto dto);

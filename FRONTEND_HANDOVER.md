@@ -152,6 +152,16 @@ Error messages are in Arabic. Validation errors come in `errors: ["message1", "m
   isFavorited: boolean;
   latitude: number | null;
   longitude: number | null;
+  distanceKm: number | null;          // populated when ?userLat&userLng provided
+}
+```
+
+### NearbyDoctorDto (doctor map results — extends DoctorListItemDto)
+```ts
+{
+  // All DoctorListItemDto fields, plus:
+  distanceKm: number;              // always populated (non-null)
+  clinicIdForLocation: number | null; // which clinic's coords were used
 }
 ```
 
@@ -162,8 +172,10 @@ Error messages are in Arabic. Validation errors come in `errors: ["message1", "m
   specialization, licenseNumber?, licenseImageUrl?,
   yearsOfExperience, bio?, consultationFee, averageRating, totalReviews,
   isAvailable, clinicId?, clinicName?,
+  clinicLatitude?, clinicLongitude?,        // active clinic location for maps
   degree?, university?, subSpecialty?, graduationYear?, boardCertification?,
-  languages: string[], associatedClinics: string[], qrCodeKey?
+  languages: string[], associatedClinics: string[], qrCodeKey?,
+  totalPatients: number                     // distinct registered patients (excludes walk-ins)
 }
 ```
 
@@ -207,6 +219,15 @@ Error messages are in Arabic. Validation errors come in `errors: ["message1", "m
   id, name, facilityId?, description?, government?, area?, address?,
   linkMap?, phoneNumber?, email?, logoUrl?, licenseImageUrl?,
   latitude?, longitude?, isActive, doctorsCount
+}
+```
+
+### NearbyClinicDto (clinic map results — extends ClinicDto)
+```ts
+{
+  // All ClinicDto fields, plus:
+  distanceKm: number;               // Haversine in km (always populated)
+  matchingDoctorsCount: number;     // doctors matching the requested specialization filter
 }
 ```
 
@@ -277,13 +298,15 @@ Error messages are in Arabic. Validation errors come in `errors: ["message1", "m
 | `POST /api/auth/reset-password` | Reset password |
 | `POST /api/auth/social-login` | NOT IMPLEMENTED (returns 501) |
 | `GET /api/auth/telegram-register` | Link Telegram |
-| `GET /api/doctor` | Browse/search doctors |
+| `GET /api/doctor` | Browse/search doctors (supports `?userLat=&userLng=` for distance sort) |
+| `GET /api/doctor/nearby` | Geospatial doctor search (returns `NearbyDoctorDto[]`) |
 | `GET /api/doctor/specializations` | List specializations |
-| `GET /api/doctor/popular` | Popular doctors |
-| `GET /api/doctor/{id}` | Doctor profile |
+| `GET /api/doctor/popular` | Popular doctors (supports `?userLat=&userLng=` for distance annotations) |
+| `GET /api/doctor/{id}` | Doctor profile (now includes `clinicLatitude`, `clinicLongitude`, `totalPatients`) |
 | `GET /api/doctor/{id}/schedules` | Doctor weekly schedule |
 | `GET /api/doctor/{id}/available-slots?date=` | Available time slots |
 | `GET /api/clinic` | Browse clinics |
+| `GET /api/clinic/nearby` | Geospatial clinic search (returns `NearbyClinicDto[]`) |
 | `GET /api/clinic/{id}` | Clinic detail |
 | `GET /api/review/doctor/{doctorId}` | Reviews for doctor |
 | `POST /api/upload/license` | Upload license file |
