@@ -48,6 +48,14 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
+        [Authorize(Roles = "Patient")]
+        [HttpGet("favorites")]
+        public async Task<IActionResult> GetFavorites()
+        {
+            var result = await _patientService.GetFavoritesAsync(GetUserId());
+            return StatusCode(result.StatusCode, result);
+        }
+
         /// <summary>
         /// Search existing patients by name, ID or phone number (available to ClinicAdmin and Doctor).
         /// </summary>

@@ -218,9 +218,13 @@ Error messages are in Arabic. Validation errors come in `errors: ["message1", "m
 {
   id, name, facilityId?, description?, government?, area?, address?,
   linkMap?, phoneNumber?, email?, logoUrl?, licenseImageUrl?,
-  latitude?, longitude?, isActive, doctorsCount
+  latitude?, longitude?, openingTime?, closingTime?, isActive, doctorsCount
 }
 ```
+
+`openingTime` / `closingTime` — `TimeSpan?`, serialized as `"HH:mm:ss"` or `null`.
+Available on **all** Clinic endpoints (`GET /api/clinic`, `GET /api/clinic/{id}`, `POST /api/clinic`, etc.)
+and settable via `CreateClinicDto` / `UpdateClinicDto`.
 
 ### NearbyClinicDto (clinic map results — extends ClinicDto)
 ```ts
@@ -319,6 +323,7 @@ Error messages are in Arabic. Validation errors come in `errors: ["message1", "m
 | `GET /api/patient/profile` | My profile |
 | `PUT /api/patient/profile` | Update profile |
 | `POST /api/patient/favorite/{doctorId}` | Toggle favorite doctor |
+| `GET /api/patient/favorites` | My favorited doctors (returns `DoctorListItemDto[]`) |
 | `GET /api/patient/family-members` | My family members |
 | `POST /api/patient/family-members` | Add family member |
 | `DELETE /api/patient/family-members/{id}` | Remove family member |
@@ -338,6 +343,7 @@ Error messages are in Arabic. Validation errors come in `errors: ["message1", "m
 | `GET /api/notification` | My notifications |
 | `GET /api/notification/unread-count` | Unread count |
 | `PUT /api/notification/{id}/read` | Mark as read |
+| `DELETE /api/notification/{id}` | Delete notification (owner only) |
 
 ### Doctor (authenticated)
 | Endpoint | Description |
@@ -366,6 +372,7 @@ Error messages are in Arabic. Validation errors come in `errors: ["message1", "m
 | `GET /api/notification` | Notifications |
 | `GET /api/notification/unread-count` | Unread count |
 | `PUT /api/notification/{id}/read` | Mark as read |
+| `DELETE /api/notification/{id}` | Delete notification (owner only) |
 
 ### ClinicAdmin (authenticated)
 | Endpoint | Description |
@@ -391,6 +398,7 @@ Error messages are in Arabic. Validation errors come in `errors: ["message1", "m
 | `GET /api/notification` | Notifications |
 | `GET /api/notification/unread-count` | Unread count |
 | `PUT /api/notification/{id}/read` | Mark as read |
+| `DELETE /api/notification/{id}` | Delete notification (owner only) |
 
 ---
 

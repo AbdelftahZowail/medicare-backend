@@ -128,6 +128,7 @@ namespace MedicalApp.API.DTOs.Doctor
         public string? Bio { get; set; }
         public decimal DefaultConsultationFee { get; set; }
         public bool IsAlreadyRegisteredInClinic { get; set; }
+        public string? QrCodeKey { get; set; }
     }
 
     public class DoctorDashboardDto

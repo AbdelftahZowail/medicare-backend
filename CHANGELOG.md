@@ -2,6 +2,32 @@
 
 All notable changes to the API that the frontend should be aware of.
 
+## 2026-06-03
+
+### Added
+
+#### New endpoints
+
+**`DELETE /api/notification/{id}`** — delete a notification. Only the notification owner can delete it. Available to all authenticated roles (Patient, Doctor, ClinicAdmin).
+
+**`GET /api/patient/favorites`** — get the current patient's favorited doctors. Returns `DoctorListItemDto[]`. Requires `Patient` role.
+
+#### New fields on existing responses
+
+**`ClinicDto` / `CreateClinicDto` / `UpdateClinicDto`**:
+
+| Field | Type | Notes |
+|---|---|---|
+| `openingTime` | string? (TimeSpan) | `"HH:mm:ss"` format or `null` |
+| `closingTime` | string? (TimeSpan) | `"HH:mm:ss"` format or `null` |
+
+Both fields are now exposed on `GET /api/clinic`, `GET /api/clinic/{id}`, `POST /api/clinic`, `PUT /api/clinic/{id}`, and `PUT /api/clinic/profile`. They map directly to the entity's `OpeningTime` / `ClosingTime` columns.
+
+### Not changed
+
+- No database schema changes. No migration needed — the entity already had these columns.
+- All previously-existing endpoints, query parameters, and response fields are unchanged. New fields are additive.
+
 ## 2026-06-01
 
 ### Added

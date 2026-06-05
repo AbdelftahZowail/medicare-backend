@@ -9,5 +9,6 @@ namespace MedicalApp.API.Services.Interfaces
         Task<ApiResponse<NotificationUnreadCountDto>> GetUnreadCountAsync(int userId);
         Task<ApiResponse> MarkAsReadAsync(int userId, int notificationId);
         Task<ApiResponse> CreateNotificationAsync(int userId, string title, string message);
+        Task<ApiResponse> DeleteNotificationAsync(int userId, int notificationId);
     }
 }

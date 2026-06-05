@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MedicalApp.API.Data.Repositories;
+using MedicalApp.API.DTOs.Doctor;
 using MedicalApp.API.DTOs.Patient;
 using MedicalApp.API.Helpers;
 using MedicalApp.API.Services.Interfaces;
@@ -108,6 +109,47 @@ namespace MedicalApp.API.Services.Implementations
                 await _unitOfWork.CompleteAsync();
                 return ApiResponse<bool>.Success(true, "Doctor added to favorites");
             }
+        }
+
+        public async Task<ApiResponse<List<DoctorListItemDto>>> GetFavoritesAsync(int userId)
+        {
+            var patient = await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == userId);
+            if (patient == null)
+                return ApiResponse<List<DoctorListItemDto>>.Failure("Patient not found", 404);
+
+            var favorites = await _unitOfWork.PatientFavorites.Query()
+                .Include(pf => pf.Doctor)
+                    .ThenInclude(d => d.User)
+                .Include(pf => pf.Doctor)
+                    .ThenInclude(d => d.DoctorClinics)
+                        .ThenInclude(dc => dc.Clinic)
+                .Where(pf => pf.PatientId == patient.Id)
+                .Select(pf => new DoctorListItemDto
+                {
+                    Id = pf.Doctor.Id,
+                    FullName = pf.Doctor.User.FullName,
+                    Specialization = pf.Doctor.Specialization,
+                    ProfileImageUrl = pf.Doctor.User.ProfileImageUrl,
+                    ConsultationFee = pf.Doctor.DoctorClinics
+                        .Where(dc => dc.IsActive)
+                        .Select(dc => dc.ConsultationFee)
+                        .FirstOrDefault() ?? pf.Doctor.ConsultationFee,
+                    AverageRating = pf.Doctor.AverageRating,
+                    TotalReviews = pf.Doctor.TotalReviews,
+                    IsAvailable = pf.Doctor.IsAvailable,
+                    ClinicName = pf.Doctor.DoctorClinics
+                        .Where(dc => dc.IsActive)
+                        .Select(dc => dc.Clinic.Name)
+                        .FirstOrDefault(),
+                    ClinicArea = pf.Doctor.DoctorClinics
+                        .Where(dc => dc.IsActive)
+                        .Select(dc => dc.Clinic.Area)
+                        .FirstOrDefault(),
+                    IsFavorited = true
+                })
+                .ToListAsync();
+
+            return ApiResponse<List<DoctorListItemDto>>.Success(favorites, "Favorites retrieved successfully");
         }
 
         public async Task<ApiResponse<List<PatientProfileDto>>> SearchPatientsAsync(string query)

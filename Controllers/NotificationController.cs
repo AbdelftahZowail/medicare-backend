@@ -40,5 +40,12 @@ namespace MedicalApp.API.Controllers
             var result = await _notificationService.MarkAsReadAsync(GetUserId(), id);
             return StatusCode(result.StatusCode, result);
         }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var result = await _notificationService.DeleteNotificationAsync(GetUserId(), id);
+            return StatusCode(result.StatusCode, result);
+        }
     }
 }

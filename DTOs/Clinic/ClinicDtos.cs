@@ -18,6 +18,8 @@ namespace MedicalApp.API.DTOs.Clinic
         public string? LicenseImageUrl { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        public TimeSpan? OpeningTime { get; set; }
+        public TimeSpan? ClosingTime { get; set; }
         public bool IsActive { get; set; }
         public int DoctorsCount { get; set; }
     }
@@ -57,6 +59,8 @@ namespace MedicalApp.API.DTOs.Clinic
 
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        public TimeSpan? OpeningTime { get; set; }
+        public TimeSpan? ClosingTime { get; set; }
     }
 
     public class NearbyClinicDto : ClinicDto
@@ -97,5 +101,7 @@ namespace MedicalApp.API.DTOs.Clinic
 
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        public TimeSpan? OpeningTime { get; set; }
+        public TimeSpan? ClosingTime { get; set; }
     }
 }

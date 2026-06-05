@@ -42,7 +42,14 @@ namespace MedicalApp.API.Services.Implementations
                     _logger.LogError(ex, "An error occurred while executing Appointment Reminder Background Worker.");
                 }
 
-                await Task.Delay(_period, stoppingToken);
+                try
+                {
+                    await Task.Delay(_period, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
 
             _logger.LogInformation("Appointment Reminder Background Worker stopped.");

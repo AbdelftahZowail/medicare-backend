@@ -56,6 +56,20 @@ namespace MedicalApp.API.Services.Implementations
             return ApiResponse.Success("Notification status updated successfully");
         }
 
+        public async Task<ApiResponse> DeleteNotificationAsync(int userId, int notificationId)
+        {
+            var notification = await _unitOfWork.Notifications.Query()
+                .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId);
+
+            if (notification == null)
+                return ApiResponse.Failure("Notification not found", 404);
+
+            _unitOfWork.Notifications.Remove(notification);
+            await _unitOfWork.CompleteAsync();
+
+            return ApiResponse.Success("Notification deleted successfully");
+        }
+
         public async Task<ApiResponse> CreateNotificationAsync(int userId, string title, string message)
         {
             var notification = new Notification

@@ -41,6 +41,8 @@ namespace MedicalApp.API.Services.Implementations
                 LicenseImageUrl = c.LicenseImageUrl,
                 Latitude = c.Latitude,
                 Longitude = c.Longitude,
+                OpeningTime = c.OpeningTime,
+                ClosingTime = c.ClosingTime,
                 IsActive = c.IsActive,
                 DoctorsCount = c.DoctorClinics.Count(dc => dc.IsActive)
             }).ToListAsync();
@@ -94,6 +96,8 @@ namespace MedicalApp.API.Services.Implementations
                     LicenseImageUrl = c.LicenseImageUrl,
                     Latitude = c.Latitude,
                     Longitude = c.Longitude,
+                    OpeningTime = c.OpeningTime,
+                    ClosingTime = c.ClosingTime,
                     IsActive = c.IsActive,
                     DoctorsCount = c.DoctorClinics?.Count(dc => dc.IsActive) ?? 0,
                     DistanceKm = GeoUtils.HaversineKm(lat, lng, c.Latitude!.Value, c.Longitude!.Value),
@@ -137,7 +141,9 @@ namespace MedicalApp.API.Services.Implementations
                 PhoneNumber = dto.PhoneNumber,
                 Email = dto.Email,
                 Latitude = dto.Latitude,
-                Longitude = dto.Longitude
+                Longitude = dto.Longitude,
+                OpeningTime = dto.OpeningTime,
+                ClosingTime = dto.ClosingTime
             };
 
             await _unitOfWork.Clinics.AddAsync(clinic);
@@ -182,6 +188,8 @@ namespace MedicalApp.API.Services.Implementations
             if (dto.Email != null) clinic.Email = dto.Email;
             if (dto.Latitude.HasValue) clinic.Latitude = dto.Latitude;
             if (dto.Longitude.HasValue) clinic.Longitude = dto.Longitude;
+            if (dto.OpeningTime.HasValue) clinic.OpeningTime = dto.OpeningTime;
+            if (dto.ClosingTime.HasValue) clinic.ClosingTime = dto.ClosingTime;
 
             _unitOfWork.Clinics.Update(clinic);
             await _unitOfWork.CompleteAsync();
@@ -205,6 +213,8 @@ namespace MedicalApp.API.Services.Implementations
             LicenseImageUrl = clinic.LicenseImageUrl,
             Latitude = clinic.Latitude,
             Longitude = clinic.Longitude,
+            OpeningTime = clinic.OpeningTime,
+            ClosingTime = clinic.ClosingTime,
             IsActive = clinic.IsActive,
             DoctorsCount = clinic.DoctorClinics?.Count(dc => dc.IsActive) ?? 0
         };
@@ -286,7 +296,8 @@ namespace MedicalApp.API.Services.Implementations
                 YearsOfExperience = doctor.YearsOfExperience,
                 Bio = doctor.Bio,
                 DefaultConsultationFee = doctor.ConsultationFee,
-                IsAlreadyRegisteredInClinic = isRegistered
+                IsAlreadyRegisteredInClinic = isRegistered,
+                QrCodeKey = doctor.QrCodeKey
             };
 
             return ApiResponse<ScannedDoctorDto>.Success(dto, "Doctor details read successfully");

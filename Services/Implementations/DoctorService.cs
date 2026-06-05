@@ -116,6 +116,10 @@ namespace MedicalApp.API.Services.Implementations
                 var dto = _mapper.Map<DoctorListItemDto>(d);
                 dto.FullName = d.User.FullName;
                 dto.ProfileImageUrl = d.User.ProfileImageUrl;
+                dto.ConsultationFee = d.DoctorClinics
+                    .Where(dc => dc.IsActive)
+                    .Select(dc => dc.ConsultationFee)
+                    .FirstOrDefault() ?? d.ConsultationFee;
                 dto.ClinicName = string.Join(", ", d.DoctorClinics.Where(dc => dc.IsActive).Select(dc => dc.Clinic.Name));
                 dto.ClinicArea = string.Join(", ", d.DoctorClinics.Where(dc => dc.IsActive).Select(dc => dc.Clinic.Area));
                 dto.IsFavorited = favoriteDoctorIds.Contains(d.Id);
@@ -178,6 +182,10 @@ namespace MedicalApp.API.Services.Implementations
                 var dto = _mapper.Map<DoctorListItemDto>(d);
                 dto.FullName = d.User.FullName;
                 dto.ProfileImageUrl = d.User.ProfileImageUrl;
+                dto.ConsultationFee = d.DoctorClinics
+                    .Where(dc => dc.IsActive)
+                    .Select(dc => dc.ConsultationFee)
+                    .FirstOrDefault() ?? d.ConsultationFee;
                 dto.ClinicName = string.Join(", ", d.DoctorClinics.Where(dc => dc.IsActive).Select(dc => dc.Clinic.Name));
                 dto.ClinicArea = string.Join(", ", d.DoctorClinics.Where(dc => dc.IsActive).Select(dc => dc.Clinic.Area));
                 dto.IsFavorited = favoriteDoctorIds.Contains(d.Id);
@@ -235,16 +243,16 @@ namespace MedicalApp.API.Services.Implementations
 
             foreach (var d in doctors)
             {
-                var locationClinic = d.DoctorClinics
+                var locationDoctorClinic = d.DoctorClinics
                     .Where(dc => dc.IsActive
                         && dc.Clinic.Latitude.HasValue
                         && dc.Clinic.Longitude.HasValue)
                     .OrderBy(dc => dc.Id)
-                    .Select(dc => dc.Clinic)
                     .FirstOrDefault();
 
-                if (locationClinic == null) continue;
+                if (locationDoctorClinic == null) continue;
 
+                var locationClinic = locationDoctorClinic.Clinic;
                 var distance = GeoUtils.HaversineKm(lat, lng, locationClinic.Latitude!.Value, locationClinic.Longitude!.Value);
                 if (distance > radiusKm) continue;
 
@@ -254,7 +262,7 @@ namespace MedicalApp.API.Services.Implementations
                     FullName = d.User.FullName,
                     Specialization = d.Specialization,
                     ProfileImageUrl = d.User.ProfileImageUrl,
-                    ConsultationFee = d.ConsultationFee,
+                    ConsultationFee = locationDoctorClinic.ConsultationFee ?? d.ConsultationFee,
                     AverageRating = d.AverageRating,
                     TotalReviews = d.TotalReviews,
                     IsAvailable = d.IsAvailable,
@@ -289,6 +297,10 @@ namespace MedicalApp.API.Services.Implementations
             dto.PhoneNumber = doctor.User.PhoneNumber;
             dto.Email = doctor.User.Email;
             dto.ProfileImageUrl = doctor.User.ProfileImageUrl;
+            dto.ConsultationFee = doctor.DoctorClinics
+                .Where(dc => dc.IsActive)
+                .Select(dc => dc.ConsultationFee)
+                .FirstOrDefault() ?? doctor.ConsultationFee;
 
             dto.Degree = doctor.Degree;
             dto.University = doctor.University;
@@ -341,6 +353,10 @@ namespace MedicalApp.API.Services.Implementations
             dto.PhoneNumber = doctor.User.PhoneNumber;
             dto.Email = doctor.User.Email;
             dto.ProfileImageUrl = doctor.User.ProfileImageUrl;
+            dto.ConsultationFee = doctor.DoctorClinics
+                .Where(dc => dc.IsActive)
+                .Select(dc => dc.ConsultationFee)
+                .FirstOrDefault() ?? doctor.ConsultationFee;
 
             dto.Degree = doctor.Degree;
             dto.University = doctor.University;
