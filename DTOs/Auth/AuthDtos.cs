@@ -70,6 +70,9 @@ namespace MedicalApp.API.DTOs.Auth
         [Required(ErrorMessage = "Clinic license is required")]
         [MaxLength(500)]
         public string LicenseFileUrl { get; set; } = string.Empty;
+
+        public TimeSpan? OpeningTime { get; set; }
+        public TimeSpan? ClosingTime { get; set; }
     }
 
     // ===== Register Doctor =====

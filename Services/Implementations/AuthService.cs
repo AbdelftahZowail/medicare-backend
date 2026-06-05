@@ -89,7 +89,9 @@ namespace MedicalApp.API.Services.Implementations
                 Area = dto.Area,
                 LinkMap = dto.LinkMap,
                 PhoneNumber = dto.Phone,
-                LicenseImageUrl = dto.LicenseFileUrl
+                LicenseImageUrl = dto.LicenseFileUrl,
+                OpeningTime = dto.OpeningTime,
+                ClosingTime = dto.ClosingTime
             };
 
             await _unitOfWork.Clinics.AddAsync(clinic);
