@@ -517,6 +517,27 @@ namespace MedicalApp.API.Services.Implementations
             return ApiResponse<MedicalApp.API.DTOs.Schedule.DoctorScheduleDto>.Success(resultDto, "Schedule added successfully", 201);
         }
 
+        public async Task<ApiResponse<bool>> DeleteScheduleAsync(int clinicAdminUserId, int scheduleId)
+        {
+            var admin = await _unitOfWork.ClinicAdmins.Query()
+                .FirstOrDefaultAsync(ca => ca.UserId == clinicAdminUserId);
+            if (admin == null)
+                return ApiResponse<bool>.Failure("You are not authorized to perform this operation as a clinic admin", 403);
+
+            var schedule = await _unitOfWork.DoctorSchedules.GetByIdAsync(scheduleId);
+            if (schedule == null)
+                return ApiResponse<bool>.Failure("Schedule not found", 404);
+
+            if (schedule.ClinicId != admin.ClinicId)
+                return ApiResponse<bool>.Failure("This schedule does not belong to your clinic", 403);
+
+            schedule.IsActive = false;
+            _unitOfWork.DoctorSchedules.Update(schedule);
+            await _unitOfWork.CompleteAsync();
+
+            return ApiResponse<bool>.Success(true, "Schedule deleted successfully");
+        }
+
         public async Task<ApiResponse<List<AvailableSlotDto>>> GetAvailableSlotsAsync(int doctorId, DateTime date)
         {
             var schedules = await _unitOfWork.DoctorSchedules.Query()

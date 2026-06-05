@@ -34,6 +34,7 @@ namespace MedicalApp.API.Services.Interfaces
         Task<ApiResponse<DoctorProfileDto>> UpdateProfileAsync(int userId, UpdateDoctorProfileDto dto);
         Task<ApiResponse<List<MedicalApp.API.DTOs.Schedule.DoctorScheduleDto>>> GetSchedulesAsync(int doctorId);
         Task<ApiResponse<MedicalApp.API.DTOs.Schedule.DoctorScheduleDto>> AddScheduleAsync(int clinicAdminUserId, int doctorId, CreateScheduleDto dto);
+        Task<ApiResponse<bool>> DeleteScheduleAsync(int clinicAdminUserId, int scheduleId);
         Task<ApiResponse<List<AvailableSlotDto>>> GetAvailableSlotsAsync(int doctorId, DateTime date);
         Task<ApiResponse<List<string>>> GetSpecializationsAsync();
         Task<ApiResponse<DoctorDashboardDto>> GetDoctorDashboardAsync(int doctorUserId);

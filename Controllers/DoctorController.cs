@@ -137,6 +137,17 @@ namespace MedicalApp.API.Controllers
         }
 
         /// <summary>
+        /// Delete a schedule (ClinicAdmin only).
+        /// </summary>
+        [Authorize(Roles = "ClinicAdmin")]
+        [HttpDelete("schedules/{scheduleId}")]
+        public async Task<IActionResult> DeleteSchedule(int scheduleId)
+        {
+            var result = await _doctorService.DeleteScheduleAsync(GetUserId(), scheduleId);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        /// <summary>
         /// Get available time slots for a doctor on a specific date (public).
         /// </summary>
         [HttpGet("{id}/available-slots")]
