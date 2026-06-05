@@ -1,7 +1,7 @@
 # MedicalApp API — Frontend Handover
 
 **Base URL:** `http://localhost:5002`  
-**Swagger UI:** `http://localhost:5002/` (root, `RoutePrefix = string.Empty`)  
+**Swagger UI:** `http://localhost:5002/` (root, `RoutePrefix = string.Empty`)
 **Swagger JSON:** `http://localhost:5002/swagger/v1/swagger.json`
 
 ---
