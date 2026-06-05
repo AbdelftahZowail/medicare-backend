@@ -157,33 +157,33 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ===== Rate Limiting =====
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
-    options.AddPolicy("AuthRateLimit", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? httpContext.Request.Headers.Host.ToString(),
-            factory: partition => new FixedWindowRateLimiterOptions
-            {
-                AutoReplenishment = true,
-                PermitLimit = 5,
-                QueueLimit = 0,
-                Window = TimeSpan.FromMinutes(1)
-            }));
-
-    options.AddPolicy("GeneralRateLimit", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? httpContext.Request.Headers.Host.ToString(),
-            factory: partition => new FixedWindowRateLimiterOptions
-            {
-                AutoReplenishment = true,
-                PermitLimit = 100,
-                QueueLimit = 0,
-                Window = TimeSpan.FromMinutes(1)
-            }));
-});
+// ===== Rate Limiting (DISABLED) =====
+// builder.Services.AddRateLimiter(options =>
+// {
+//     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+//
+//     options.AddPolicy("AuthRateLimit", httpContext =>
+//         RateLimitPartition.GetFixedWindowLimiter(
+//             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? httpContext.Request.Headers.Host.ToString(),
+//             factory: partition => new FixedWindowRateLimiterOptions
+//             {
+//                 AutoReplenishment = true,
+//                 PermitLimit = 5,
+//                 QueueLimit = 0,
+//                 Window = TimeSpan.FromMinutes(1)
+//             }));
+//
+//     options.AddPolicy("GeneralRateLimit", httpContext =>
+//         RateLimitPartition.GetFixedWindowLimiter(
+//             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? httpContext.Request.Headers.Host.ToString(),
+//             factory: partition => new FixedWindowRateLimiterOptions
+//             {
+//                 AutoReplenishment = true,
+//                 PermitLimit = 100,
+//                 QueueLimit = 0,
+//                 Window = TimeSpan.FromMinutes(1)
+//             }));
+// });
 
 var app = builder.Build();
 
@@ -220,9 +220,9 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles(); // Serve uploaded files (licenses, profile images)
 app.UseCors("AllowAll");
-app.UseRateLimiter(); // Apply Rate Limiting
+// app.UseRateLimiter(); // Apply Rate Limiting
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers().RequireRateLimiting("GeneralRateLimit"); // Apply general rate limit by default
+app.MapControllers(); // Rate limiting disabled
 
 app.Run();
