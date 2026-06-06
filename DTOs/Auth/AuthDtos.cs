@@ -55,9 +55,19 @@ namespace MedicalApp.API.DTOs.Auth
         [MaxLength(100)]
         public string Area { get; set; } = string.Empty;
 
+        [MaxLength(300)]
+        public string? Address { get; set; }
+
         [Required(ErrorMessage = "Phone number is required")]
         [MaxLength(20)]
         public string Phone { get; set; } = string.Empty;
+
+        [MaxLength(100)]
+        [EmailAddress(ErrorMessage = "Invalid email format")]
+        public string? Email { get; set; }
+
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
 
         [Required(ErrorMessage = "Password is required")]
         [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]

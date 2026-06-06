@@ -87,9 +87,13 @@ namespace MedicalApp.API.Services.Implementations
                 Name = dto.ClinicName,
                 Government = dto.Government,
                 Area = dto.Area,
+                Address = dto.Address,
                 LinkMap = dto.LinkMap,
                 PhoneNumber = dto.Phone,
+                Email = dto.Email,
                 LicenseImageUrl = dto.LicenseFileUrl,
+                Latitude = dto.Latitude,
+                Longitude = dto.Longitude,
                 OpeningTime = dto.OpeningTime,
                 ClosingTime = dto.ClosingTime
             };
