@@ -354,35 +354,37 @@ namespace MedicalApp.API.Services.Implementations
                 await _unitOfWork.DoctorClinics.AddAsync(newLink);
             }
 
-            // Update schedules (remove old ones and add new ones for this clinic and doctor)
-            var oldSchedules = await _unitOfWork.DoctorSchedules.Query()
-                .Where(s => s.ClinicId == admin.ClinicId && s.DoctorId == dto.DoctorId)
-                .ToListAsync();
-
-            foreach (var os in oldSchedules)
+            if (dto.Schedules.Count > 0)
             {
-                _unitOfWork.DoctorSchedules.Remove(os);
-            }
+                var oldSchedules = await _unitOfWork.DoctorSchedules.Query()
+                    .Where(s => s.ClinicId == admin.ClinicId && s.DoctorId == dto.DoctorId)
+                    .ToListAsync();
 
-            foreach (var sDto in dto.Schedules)
-            {
-                var breakStart = string.IsNullOrEmpty(sDto.BreakStartTime) ? (TimeSpan?)null : TimeSpan.Parse(sDto.BreakStartTime);
-                var breakEnd = string.IsNullOrEmpty(sDto.BreakEndTime) ? (TimeSpan?)null : TimeSpan.Parse(sDto.BreakEndTime);
-
-                var newSchedule = new Models.Entities.DoctorSchedule
+                foreach (var os in oldSchedules)
                 {
-                    ClinicId = admin.ClinicId,
-                    DoctorId = dto.DoctorId,
-                    DayOfWeek = sDto.DayOfWeek,
-                    StartTime = TimeSpan.Parse(sDto.StartTime),
-                    EndTime = TimeSpan.Parse(sDto.EndTime),
-                    BreakStartTime = breakStart,
-                    BreakEndTime = breakEnd,
-                    SlotDurationMinutes = sDto.SlotDurationMinutes,
-                    MaxPatients = sDto.MaxPatients,
-                    IsActive = sDto.IsActive
-                };
-                await _unitOfWork.DoctorSchedules.AddAsync(newSchedule);
+                    _unitOfWork.DoctorSchedules.Remove(os);
+                }
+
+                foreach (var sDto in dto.Schedules)
+                {
+                    var breakStart = string.IsNullOrEmpty(sDto.BreakStartTime) ? (TimeSpan?)null : TimeSpan.Parse(sDto.BreakStartTime);
+                    var breakEnd = string.IsNullOrEmpty(sDto.BreakEndTime) ? (TimeSpan?)null : TimeSpan.Parse(sDto.BreakEndTime);
+
+                    var newSchedule = new Models.Entities.DoctorSchedule
+                    {
+                        ClinicId = admin.ClinicId,
+                        DoctorId = dto.DoctorId,
+                        DayOfWeek = sDto.DayOfWeek,
+                        StartTime = TimeSpan.Parse(sDto.StartTime),
+                        EndTime = TimeSpan.Parse(sDto.EndTime),
+                        BreakStartTime = breakStart,
+                        BreakEndTime = breakEnd,
+                        SlotDurationMinutes = sDto.SlotDurationMinutes,
+                        MaxPatients = sDto.MaxPatients,
+                        IsActive = sDto.IsActive
+                    };
+                    await _unitOfWork.DoctorSchedules.AddAsync(newSchedule);
+                }
             }
 
             await _unitOfWork.CompleteAsync();
@@ -438,8 +440,60 @@ namespace MedicalApp.API.Services.Implementations
 
         public async Task<ApiResponse<ClinicDoctorDetailsDto>> UpdateClinicDoctorAsync(int clinicAdminUserId, int doctorId, UpdateClinicDoctorDto dto)
         {
-            dto.DoctorId = doctorId; // override to match route param
-            return await RegisterClinicDoctorAsync(clinicAdminUserId, dto);
+            var admin = await _unitOfWork.ClinicAdmins.Query()
+                .FirstOrDefaultAsync(ca => ca.UserId == clinicAdminUserId);
+            if (admin == null)
+                return ApiResponse<ClinicDoctorDetailsDto>.Failure("You are not authorized to update a doctor as an admin", 403);
+
+            var link = await _unitOfWork.DoctorClinics.Query()
+                .FirstOrDefaultAsync(dc => dc.ClinicId == admin.ClinicId && dc.DoctorId == doctorId && dc.IsActive);
+
+            if (link == null)
+                return ApiResponse<ClinicDoctorDetailsDto>.Failure("Doctor is not registered in this clinic", 404);
+
+            // Only update the DoctorClinic link fields — never touch schedules.
+            link.ConsultationFee = dto.ConsultationFee;
+            link.IsAvailable = dto.IsAvailable;
+            link.InternalNotes = dto.InternalNotes;
+            _unitOfWork.DoctorClinics.Update(link);
+
+            // If schedules are explicitly provided, update them too.
+            if (dto.Schedules.Count > 0)
+            {
+                var oldSchedules = await _unitOfWork.DoctorSchedules.Query()
+                    .Where(s => s.ClinicId == admin.ClinicId && s.DoctorId == doctorId)
+                    .ToListAsync();
+
+                foreach (var os in oldSchedules)
+                {
+                    _unitOfWork.DoctorSchedules.Remove(os);
+                }
+
+                foreach (var sDto in dto.Schedules)
+                {
+                    var breakStart = string.IsNullOrEmpty(sDto.BreakStartTime) ? (TimeSpan?)null : TimeSpan.Parse(sDto.BreakStartTime);
+                    var breakEnd = string.IsNullOrEmpty(sDto.BreakEndTime) ? (TimeSpan?)null : TimeSpan.Parse(sDto.BreakEndTime);
+
+                    var newSchedule = new Models.Entities.DoctorSchedule
+                    {
+                        ClinicId = admin.ClinicId,
+                        DoctorId = doctorId,
+                        DayOfWeek = sDto.DayOfWeek,
+                        StartTime = TimeSpan.Parse(sDto.StartTime),
+                        EndTime = TimeSpan.Parse(sDto.EndTime),
+                        BreakStartTime = breakStart,
+                        BreakEndTime = breakEnd,
+                        SlotDurationMinutes = sDto.SlotDurationMinutes,
+                        MaxPatients = sDto.MaxPatients,
+                        IsActive = sDto.IsActive
+                    };
+                    await _unitOfWork.DoctorSchedules.AddAsync(newSchedule);
+                }
+            }
+
+            await _unitOfWork.CompleteAsync();
+
+            return await GetClinicDoctorDetailsAsync(clinicAdminUserId, doctorId);
         }
 
         public async Task<ApiResponse<bool>> RemoveClinicDoctorAsync(int clinicAdminUserId, int doctorId)
