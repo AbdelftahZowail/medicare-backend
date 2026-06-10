@@ -60,7 +60,15 @@ namespace MedicalApp.API.Models.Entities
 
         public bool IsPaid { get; set; } = false;
 
+        public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
+
         public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+
+        /// <summary>
+        /// Consultation fee frozen at booking time. Revenue calculations must use this value.
+        /// </summary>
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal ConsultationFee { get; set; }
 
         public int? OfflinePatientAge { get; set; }
 

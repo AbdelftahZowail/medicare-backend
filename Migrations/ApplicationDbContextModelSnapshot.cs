@@ -41,6 +41,9 @@ namespace MedicalApp.API.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<decimal>("ConsultationFee")
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -86,6 +89,9 @@ namespace MedicalApp.API.Migrations
                     b.Property<int>("PaymentMethod")
                         .HasColumnType("int");
 
+                    b.Property<int>("PaymentStatus")
+                        .HasColumnType("int");
+
                     b.Property<int?>("QueueNumber")
                         .HasColumnType("int");
 
@@ -111,6 +117,10 @@ namespace MedicalApp.API.Migrations
                     b.HasIndex("DoctorId", "AppointmentDate");
 
                     b.HasIndex("PatientId", "AppointmentDate");
+
+                    b.HasIndex("DoctorId", "AppointmentDate", "StartTime")
+                        .IsUnique()
+                        .HasFilter("[IsDeleted] = 0 AND [Status] <> 4");
 
                     b.ToTable("Appointments");
                 });
@@ -590,9 +600,16 @@ namespace MedicalApp.API.Migrations
                     b.Property<int>("DoctorId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("FamilyMemberId")
+                        .HasColumnType("int");
+
                     b.Property<string>("HeartRate")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Instructions")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -645,6 +662,8 @@ namespace MedicalApp.API.Migrations
                         .HasFilter("[AppointmentId] IS NOT NULL");
 
                     b.HasIndex("DoctorId");
+
+                    b.HasIndex("FamilyMemberId");
 
                     b.HasIndex("PatientId");
 
@@ -1028,12 +1047,12 @@ namespace MedicalApp.API.Migrations
                     b.HasOne("MedicalApp.API.Models.Entities.FamilyMember", "FamilyMember")
                         .WithMany("Appointments")
                         .HasForeignKey("FamilyMemberId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("MedicalApp.API.Models.Entities.Patient", "Patient")
                         .WithMany("Appointments")
                         .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Doctor");
 
@@ -1164,6 +1183,11 @@ namespace MedicalApp.API.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MedicalApp.API.Models.Entities.FamilyMember", "FamilyMember")
+                        .WithMany()
+                        .HasForeignKey("FamilyMemberId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MedicalApp.API.Models.Entities.Patient", "Patient")
                         .WithMany("MedicalRecords")
                         .HasForeignKey("PatientId")
@@ -1173,6 +1197,8 @@ namespace MedicalApp.API.Migrations
                     b.Navigation("Appointment");
 
                     b.Navigation("Doctor");
+
+                    b.Navigation("FamilyMember");
 
                     b.Navigation("Patient");
                 });

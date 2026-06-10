@@ -2,13 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MedicalApp.API.DTOs.Auth;
 using MedicalApp.API.Services.Interfaces;
-using Microsoft.AspNetCore.RateLimiting;
-
 namespace MedicalApp.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [EnableRateLimiting("AuthRateLimit")]
     public class AuthController : BaseApiController
     {
         private readonly IAuthService _authService;

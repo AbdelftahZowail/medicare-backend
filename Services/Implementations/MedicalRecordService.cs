@@ -51,13 +51,24 @@ namespace MedicalApp.API.Services.Implementations
                 notesContent = dto.Observations;
             }
 
+            if (dto.AppointmentId.HasValue)
+            {
+                var linkedAppointment = await _unitOfWork.Appointments.Query()
+                    .FirstOrDefaultAsync(a => a.Id == dto.AppointmentId.Value);
+                if (linkedAppointment?.Status == Models.Enums.AppointmentStatus.Completed)
+                    return ApiResponse<MedicalRecordDto>.Failure(
+                        "Medical records are append-only. Completed consultations cannot be modified.", 400);
+            }
+
             var record = new Models.Entities.MedicalRecord
             {
                 PatientId = dto.PatientId,
+                FamilyMemberId = dto.FamilyMemberId,
                 DoctorId = doctor.Id,
                 AppointmentId = dto.AppointmentId,
                 Diagnosis = dto.Diagnosis,
                 Prescription = prescriptionContent,
+                Instructions = dto.Instructions,
                 TreatmentPlan = treatmentPlanContent,
                 Notes = notesContent,
                 Symptoms = dto.Symptoms,
@@ -143,15 +154,18 @@ namespace MedicalApp.API.Services.Implementations
                 var doctor = await _unitOfWork.Doctors.Query().FirstOrDefaultAsync(d => d.UserId == userId);
                 if (doctor == null) return ApiResponse<List<MedicalRecordDto>>.Failure("Unauthorized", 403);
 
-                var hasTreated = await _unitOfWork.Appointments.Query()
-                    .AnyAsync(a => a.DoctorId == doctor.Id && a.PatientId == patientId);
+                var hasBooking = await _unitOfWork.Appointments.Query()
+                    .AnyAsync(a => a.DoctorId == doctor.Id
+                        && a.PatientId == patientId
+                        && a.Status != Models.Enums.AppointmentStatus.Cancelled);
 
-                if (!hasTreated)
-                    return ApiResponse<List<MedicalRecordDto>>.Failure("You cannot view records of a patient you have not treated", 403);
+                if (!hasBooking)
+                    return ApiResponse<List<MedicalRecordDto>>.Failure("You are not authorized to view this patient's records", 403);
             }
 
             var records = await _unitOfWork.MedicalRecords.Query()
                 .Include(r => r.Patient).ThenInclude(p => p!.User)
+                .Include(r => r.FamilyMember)
                 .Include(r => r.Doctor).ThenInclude(d => d.User)
                 .Where(r => r.PatientId == patientId)
                 .OrderByDescending(r => r.VisitDate)
@@ -190,10 +204,12 @@ namespace MedicalApp.API.Services.Implementations
 
                 if (record.DoctorId != doctor.Id)
                 {
-                    var hasTreated = await _unitOfWork.Appointments.Query()
-                        .AnyAsync(a => a.DoctorId == doctor.Id && a.PatientId == record.PatientId);
+                    var hasBooking = await _unitOfWork.Appointments.Query()
+                        .AnyAsync(a => a.DoctorId == doctor.Id
+                            && a.PatientId == record.PatientId
+                            && a.Status != Models.Enums.AppointmentStatus.Cancelled);
 
-                    if (!hasTreated)
+                    if (!hasBooking)
                         return ApiResponse<MedicalRecordDto>.Failure("You cannot view this record", 403);
                 }
             }
@@ -208,7 +224,9 @@ namespace MedicalApp.API.Services.Implementations
             {
                 Id = record.Id,
                 PatientId = record.PatientId,
-                PatientName = record.Patient?.User?.FullName ?? string.Empty,
+                PatientName = record.FamilyMember?.Name ?? record.Patient?.User?.FullName ?? string.Empty,
+                FamilyMemberId = record.FamilyMemberId,
+                FamilyMemberName = record.FamilyMember?.Name,
                 DoctorId = record.DoctorId,
                 DoctorName = record.Doctor?.User?.FullName ?? string.Empty,
                 DoctorSpecialization = record.Doctor?.Specialization ?? string.Empty,
@@ -216,6 +234,7 @@ namespace MedicalApp.API.Services.Implementations
                 AppointmentId = record.AppointmentId,
                 Diagnosis = record.Diagnosis,
                 Prescription = record.Prescription,
+                Instructions = record.Instructions,
                 TreatmentPlan = record.TreatmentPlan,
                 Notes = record.Notes,
                 Symptoms = record.Symptoms,

@@ -23,7 +23,7 @@ namespace MedicalApp.API.Services.Interfaces
         // Clinic Admin features
         Task<ApiResponse<ClinicDashboardOverviewDto>> GetClinicDashboardOverviewAsync(int clinicAdminUserId, int? doctorId);
         Task<ApiResponse<List<AppointmentDto>>> GetClinicTodayQueueAsync(int clinicAdminUserId, int doctorId);
-        Task<ApiResponse<AppointmentDto>> StartCheckupAsync(int clinicAdminUserId, int appointmentId);
+        Task<ApiResponse<AppointmentDto>> StartCheckupAsync(int staffUserId, int appointmentId);
         Task<ApiResponse<PaymentsDashboardDto>> GetPaymentsDashboardAsync(int clinicAdminUserId, int? doctorId, string timeframe);
     }
 }

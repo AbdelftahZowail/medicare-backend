@@ -94,6 +94,9 @@ namespace MedicalApp.API.Data
                       .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasQueryFilter(dc => !dc.IsDeleted);
+
+                entity.Property(dc => dc.ConsultationFee)
+                      .HasColumnType("decimal(10,2)");
             });
 
             // ===== ClinicAdmin Configuration =====
@@ -142,12 +145,12 @@ namespace MedicalApp.API.Data
                 entity.HasOne(a => a.Patient)
                       .WithMany(p => p.Appointments)
                       .HasForeignKey(a => a.PatientId)
-                      .OnDelete(DeleteBehavior.SetNull);
+                      .OnDelete(DeleteBehavior.NoAction); // Changed from SetNull: breaks cascade cycle (Patient→Appointment & Patient→FamilyMember→Appointment)
 
                 entity.HasOne(a => a.FamilyMember)
                       .WithMany(fm => fm.Appointments)
                       .HasForeignKey(a => a.FamilyMemberId)
-                      .OnDelete(DeleteBehavior.SetNull);
+                      .OnDelete(DeleteBehavior.NoAction); // Changed from SetNull: breaks cascade cycle; soft-delete (IsDeleted) handles cleanup
 
                 entity.HasOne(a => a.Doctor)
                       .WithMany(d => d.Appointments)
@@ -158,6 +161,12 @@ namespace MedicalApp.API.Data
 
                 entity.HasIndex(a => new { a.DoctorId, a.AppointmentDate });
                 entity.HasIndex(a => new { a.PatientId, a.AppointmentDate });
+                entity.HasIndex(a => new { a.DoctorId, a.AppointmentDate, a.StartTime })
+                      .IsUnique()
+                      .HasFilter("[IsDeleted] = 0 AND [Status] <> 4");
+
+                entity.Property(a => a.ConsultationFee)
+                      .HasColumnType("decimal(10,2)");
             });
 
             // ===== MedicalRecord Configuration =====
@@ -167,6 +176,11 @@ namespace MedicalApp.API.Data
                       .WithMany(p => p.MedicalRecords)
                       .HasForeignKey(mr => mr.PatientId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(mr => mr.FamilyMember)
+                      .WithMany()
+                      .HasForeignKey(mr => mr.FamilyMemberId)
+                      .OnDelete(DeleteBehavior.SetNull);
 
                 entity.HasOne(mr => mr.Doctor)
                       .WithMany(d => d.MedicalRecords)

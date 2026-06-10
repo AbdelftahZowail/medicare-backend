@@ -42,5 +42,8 @@ namespace MedicalApp.API.Services.Interfaces
         Task<ApiResponse<PatientHistoryDto>> GetPatientHistoryAsync(int doctorUserId, int patientId);
         Task<ApiResponse<string>> GetDoctorQrCodeAsync(int doctorUserId);
         Task<ApiResponse<MedicalRecordDto>> SubmitConsultationSessionAsync(int doctorUserId, int appointmentId, CreateMedicalRecordDto dto);
+        Task<ApiResponse<ConsultationScreenDto>> GetConsultationScreenAsync(int doctorUserId, int appointmentId);
+        Task<ApiResponse<MedicalRecordDto>> CompleteConsultationAsync(int doctorUserId, int appointmentId, CompleteConsultationDto dto);
+        Task<ApiResponse<List<AppointmentDto>>> GetActiveConsultationsAsync(int doctorUserId);
     }
 }

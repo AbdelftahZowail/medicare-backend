@@ -86,6 +86,9 @@ namespace MedicalApp.API.DTOs.Appointment
         public bool IsEmergency { get; set; }
         public string? ChiefComplaint { get; set; }
         public bool IsPaid { get; set; }
+        public PaymentStatus PaymentStatus { get; set; }
+        public string PaymentStatusText { get; set; } = string.Empty;
+        public decimal ConsultationFee { get; set; }
         public PaymentMethod PaymentMethod { get; set; }
         public string PaymentMethodText { get; set; } = string.Empty;
         public int? OfflinePatientAge { get; set; }

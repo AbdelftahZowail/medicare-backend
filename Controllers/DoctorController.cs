@@ -202,6 +202,39 @@ namespace MedicalApp.API.Controllers
         }
 
         /// <summary>
+        /// Get consultation screen with patient info and full medical history (Doctor only).
+        /// </summary>
+        [Authorize(Roles = "Doctor")]
+        [HttpGet("consultation/{appointmentId}")]
+        public async Task<IActionResult> GetConsultationScreen(int appointmentId)
+        {
+            var result = await _doctorService.GetConsultationScreenAsync(GetUserId(), appointmentId);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        /// <summary>
+        /// Get doctor's active consultations for today (Doctor only).
+        /// </summary>
+        [Authorize(Roles = "Doctor")]
+        [HttpGet("active-consultations")]
+        public async Task<IActionResult> GetActiveConsultations()
+        {
+            var result = await _doctorService.GetActiveConsultationsAsync(GetUserId());
+            return StatusCode(result.StatusCode, result);
+        }
+
+        /// <summary>
+        /// Complete consultation with diagnosis and optional medications (Doctor only).
+        /// </summary>
+        [Authorize(Roles = "Doctor")]
+        [HttpPost("consultation/{appointmentId}/complete")]
+        public async Task<IActionResult> CompleteConsultation(int appointmentId, [FromBody] CompleteConsultationDto dto)
+        {
+            var result = await _doctorService.CompleteConsultationAsync(GetUserId(), appointmentId, dto);
+            return StatusCode(result.StatusCode, result);
+        }
+
+        /// <summary>
         /// Submit checkup vitals, SOAP summary, and prescription details to complete consultation (Doctor only).
         /// </summary>
         [Authorize(Roles = "Doctor")]

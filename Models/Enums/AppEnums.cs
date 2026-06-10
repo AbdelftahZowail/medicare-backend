@@ -54,4 +54,11 @@ namespace MedicalApp.API.Models.Enums
         Cash = 0,
         Online = 1
     }
+
+    public enum PaymentStatus
+    {
+        Pending = 0,
+        Paid = 1,
+        Refunded = 2
+    }
 }

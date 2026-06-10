@@ -35,6 +35,7 @@ namespace MedicalApp.API.Middleware
         private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
             context.Response.ContentType = "application/json";
+            var exposeDetails = context.RequestServices.GetService<IHostEnvironment>()?.IsDevelopment() == true;
 
             var response = exception switch
             {
@@ -67,7 +68,7 @@ namespace MedicalApp.API.Middleware
                     IsSuccess = false,
                     Message = "An unexpected server error occurred",
                     StatusCode = (int)HttpStatusCode.InternalServerError,
-                    Errors = new List<string> { exception.Message }
+                    Errors = exposeDetails ? new List<string> { exception.Message } : null
                 }
             };
 

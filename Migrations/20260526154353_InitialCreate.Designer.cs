@@ -1031,12 +1031,12 @@ namespace MedicalApp.API.Migrations
                     b.HasOne("MedicalApp.API.Models.Entities.FamilyMember", "FamilyMember")
                         .WithMany("Appointments")
                         .HasForeignKey("FamilyMemberId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("MedicalApp.API.Models.Entities.Patient", "Patient")
                         .WithMany("Appointments")
                         .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Doctor");
 

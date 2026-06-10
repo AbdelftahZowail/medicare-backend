@@ -302,7 +302,7 @@ namespace MedicalApp.API.Services.Implementations
                 );
             }
 
-            _logger.LogInformation("OTP for {Phone} sent via Telegram: {Code}", dto.Phone, otp);
+            _logger.LogInformation("OTP sent via Telegram for phone ending in {PhoneSuffix}", dto.Phone.Trim().TakeLast(4));
 
             return ApiResponse.Success("Verification code sent successfully to your Telegram account");
         }

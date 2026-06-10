@@ -481,13 +481,13 @@ namespace MedicalApp.API.Migrations
                         column: x => x.FamilyMemberId,
                         principalTable: "FamilyMembers",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.NoAction); // NoAction: breaks cascade cycle; soft-delete handles cleanup
                     table.ForeignKey(
                         name: "FK_Appointments_Patients_PatientId",
                         column: x => x.PatientId,
                         principalTable: "Patients",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.NoAction); // NoAction: breaks cascade cycle; soft-delete handles cleanup
                 });
 
             migrationBuilder.CreateTable(

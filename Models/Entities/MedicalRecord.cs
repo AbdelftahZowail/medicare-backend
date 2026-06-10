@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using MedicalApp.API.Models.Enums;
 
 namespace MedicalApp.API.Models.Entities
 {
@@ -10,6 +11,11 @@ namespace MedicalApp.API.Models.Entities
 
         [ForeignKey(nameof(PatientId))]
         public Patient Patient { get; set; } = null!;
+
+        public int? FamilyMemberId { get; set; }
+
+        [ForeignKey(nameof(FamilyMemberId))]
+        public FamilyMember? FamilyMember { get; set; }
 
         [Required]
         public int DoctorId { get; set; }
@@ -28,6 +34,9 @@ namespace MedicalApp.API.Models.Entities
 
         [MaxLength(1000)]
         public string? Prescription { get; set; }
+
+        [MaxLength(1000)]
+        public string? Instructions { get; set; }
 
         [MaxLength(1000)]
         public string? TreatmentPlan { get; set; }

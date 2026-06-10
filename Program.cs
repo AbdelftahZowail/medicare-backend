@@ -187,17 +187,18 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Auto-create database for development
+// Apply pending EF Core migrations at startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     try
     {
-        db.Database.EnsureCreated();
+        db.Database.Migrate();
     }
     catch (Exception ex)
     {
-        Console.WriteLine("Database creation failed: " + ex.Message);
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Database migration failed");
     }
 }
 

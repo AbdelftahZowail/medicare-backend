@@ -9,6 +9,7 @@ using MedicalApp.API.Helpers;
 using MedicalApp.API.Models.Entities;
 using MedicalApp.API.Models.Enums;
 using MedicalApp.API.Services.Interfaces;
+using System.Data;
 using System.Text.Json;
 
 namespace MedicalApp.API.Services.Implementations
@@ -18,12 +19,18 @@ namespace MedicalApp.API.Services.Implementations
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly IMedicalRecordService _medicalRecordService;
+        private readonly ILogger<DoctorService> _logger;
 
-        public DoctorService(IUnitOfWork unitOfWork, IMapper mapper, IMedicalRecordService medicalRecordService)
+        public DoctorService(
+            IUnitOfWork unitOfWork,
+            IMapper mapper,
+            IMedicalRecordService medicalRecordService,
+            ILogger<DoctorService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _medicalRecordService = medicalRecordService;
+            _logger = logger;
         }
 
         public async Task<ApiResponse<List<DoctorListItemDto>>> GetAllDoctorsAsync(
@@ -595,19 +602,9 @@ namespace MedicalApp.API.Services.Implementations
                 .Where(a => a.DoctorId == doctor.Id && a.AppointmentDate.Date == today && a.Status != AppointmentStatus.Cancelled)
                 .ToListAsync();
 
-            var doctorClinics = await _unitOfWork.DoctorClinics.Query().Where(dc => dc.DoctorId == doctor.Id).ToListAsync();
-
-            decimal earnings = 0;
-            foreach (var app in appointments.Where(a => a.IsPaid))
-            {
-                decimal fee = doctor.ConsultationFee;
-                var dc = doctorClinics.FirstOrDefault();
-                if (dc != null && dc.ConsultationFee.HasValue)
-                {
-                    fee = dc.ConsultationFee.Value;
-                }
-                earnings += fee;
-            }
+            decimal earnings = appointments
+                .Where(a => a.PaymentStatus == PaymentStatus.Paid)
+                .Sum(a => a.ConsultationFee);
 
             var completedPatientIds = await _unitOfWork.Appointments.Query()
                 .Where(ap => ap.DoctorId == doctor.Id && ap.Status == AppointmentStatus.Completed && ap.AppointmentDate.Date < today && ap.PatientId.HasValue)
@@ -673,6 +670,7 @@ namespace MedicalApp.API.Services.Implementations
             var query = _unitOfWork.Appointments.Query()
                 .Include(a => a.Patient)
                     .ThenInclude(p => p!.User)
+                .Include(a => a.FamilyMember)
                 .Include(a => a.Doctor)
                     .ThenInclude(d => d.User)
                 .Include(a => a.Doctor.DoctorClinics)
@@ -685,7 +683,7 @@ namespace MedicalApp.API.Services.Implementations
                 .OrderBy(a => a.QueueStatus == QueueStatus.InConsultation ? 0 :
                               a.QueueStatus == QueueStatus.Waiting && a.IsEmergency ? 1 :
                               a.QueueStatus == QueueStatus.Waiting && !a.IsEmergency ? 2 : 3)
-                .ThenBy(a => a.QueueNumber)
+                .ThenBy(a => a.StartTime)
                 .Select(MapAppointmentToDto)
                 .ToList();
 
@@ -723,16 +721,19 @@ namespace MedicalApp.API.Services.Implementations
             if (patient == null)
                 return ApiResponse<PatientHistoryDto>.Failure("Patient not found", 404);
 
-            var hasTreated = await _unitOfWork.Appointments.Query()
-                .AnyAsync(a => a.DoctorId == doctor.Id && a.PatientId == patientId);
+            var hasBooking = await _unitOfWork.Appointments.Query()
+                .AnyAsync(a => a.DoctorId == doctor.Id
+                    && a.PatientId == patientId
+                    && a.Status != AppointmentStatus.Cancelled);
 
-            if (!hasTreated)
-                return ApiResponse<PatientHistoryDto>.Failure("You are not authorized to view a patient you have not treated", 403);
+            if (!hasBooking)
+                return ApiResponse<PatientHistoryDto>.Failure("You are not authorized to view this patient's history", 403);
 
             var records = await _unitOfWork.MedicalRecords.Query()
                 .Include(r => r.Patient).ThenInclude(p => p!.User)
+                .Include(r => r.FamilyMember)
                 .Include(r => r.Doctor).ThenInclude(d => d.User)
-                .Where(r => r.PatientId == patientId)
+                .Where(r => r.PatientId == patientId && r.FamilyMemberId == null)
                 .OrderByDescending(r => r.VisitDate)
                 .ToListAsync();
 
@@ -801,99 +802,402 @@ namespace MedicalApp.API.Services.Implementations
             return ApiResponse<string>.Success(doctor.QrCodeKey, "QR code key retrieved successfully");
         }
 
-        // ===== Submit Consultation Checkup Session =====
-        public async Task<ApiResponse<MedicalRecordDto>> SubmitConsultationSessionAsync(int doctorUserId, int appointmentId, CreateMedicalRecordDto dto)
+        // ===== Consultation Screen =====
+        public async Task<ApiResponse<ConsultationScreenDto>> GetConsultationScreenAsync(int doctorUserId, int appointmentId)
+        {
+            var doctor = await _unitOfWork.Doctors.Query()
+                .Include(d => d.User)
+                .FirstOrDefaultAsync(d => d.UserId == doctorUserId);
+            if (doctor == null)
+                return ApiResponse<ConsultationScreenDto>.Failure("Doctor profile not found", 404);
+
+            var appointment = await _unitOfWork.Appointments.Query()
+                .Include(a => a.Patient).ThenInclude(p => p!.User)
+                .Include(a => a.FamilyMember)
+                .Include(a => a.Doctor).ThenInclude(d => d.User)
+                .Include(a => a.Doctor.DoctorClinics).ThenInclude(dc => dc.Clinic)
+                .Include(a => a.MedicalRecord)
+                .FirstOrDefaultAsync(a => a.Id == appointmentId && a.DoctorId == doctor.Id);
+
+            if (appointment == null)
+                return ApiResponse<ConsultationScreenDto>.Failure("Appointment not found or does not belong to this doctor", 404);
+
+            if (appointment.Status == AppointmentStatus.Cancelled)
+                return ApiResponse<ConsultationScreenDto>.Failure("This appointment has been cancelled", 400);
+
+            var patientInfo = BuildConsultationPatient(appointment);
+            var medicalHistory = await LoadMedicalHistoryAsync(appointment);
+            var previousVisits = await LoadPreviousVisitsAsync(appointment);
+
+            var previousDiagnoses = medicalHistory
+                .Select(r => r.Diagnosis)
+                .Where(d => !string.IsNullOrWhiteSpace(d))
+                .Distinct()
+                .ToList();
+
+            var previousPrescriptions = medicalHistory
+                .Where(r => r.Medications != null)
+                .SelectMany(r => r.Medications!)
+                .ToList();
+
+            var screen = new ConsultationScreenDto
+            {
+                Appointment = MapAppointmentToDto(appointment),
+                Patient = patientInfo,
+                MedicalHistory = medicalHistory,
+                PreviousVisits = previousVisits,
+                PreviousDiagnoses = previousDiagnoses,
+                PreviousPrescriptions = previousPrescriptions
+            };
+
+            return ApiResponse<ConsultationScreenDto>.Success(screen, "Consultation screen loaded successfully");
+        }
+
+        // ===== Active Consultations =====
+        public async Task<ApiResponse<List<AppointmentDto>>> GetActiveConsultationsAsync(int doctorUserId)
         {
             var doctor = await _unitOfWork.Doctors.Query().FirstOrDefaultAsync(d => d.UserId == doctorUserId);
+            if (doctor == null)
+                return ApiResponse<List<AppointmentDto>>.Failure("Doctor profile not found", 404);
+
+            var today = DateTime.Today;
+            var active = await _unitOfWork.Appointments.Query()
+                .Include(a => a.Patient).ThenInclude(p => p!.User)
+                .Include(a => a.FamilyMember)
+                .Include(a => a.Doctor).ThenInclude(d => d.User)
+                .Include(a => a.Doctor.DoctorClinics).ThenInclude(dc => dc.Clinic)
+                .Where(a => a.DoctorId == doctor.Id
+                    && a.AppointmentDate.Date == today
+                    && a.Status == AppointmentStatus.InProgress
+                    && a.QueueStatus == QueueStatus.InConsultation)
+                .OrderBy(a => a.StartTime)
+                .ToListAsync();
+
+            return ApiResponse<List<AppointmentDto>>.Success(
+                active.Select(MapAppointmentToDto).ToList(),
+                "Active consultations retrieved successfully");
+        }
+
+        // ===== Complete Consultation =====
+        public async Task<ApiResponse<MedicalRecordDto>> CompleteConsultationAsync(
+            int doctorUserId, int appointmentId, CompleteConsultationDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Diagnosis))
+                return ApiResponse<MedicalRecordDto>.Failure("Diagnosis is required", 400);
+
+            var doctor = await _unitOfWork.Doctors.Query()
+                .Include(d => d.User)
+                .FirstOrDefaultAsync(d => d.UserId == doctorUserId);
             if (doctor == null)
                 return ApiResponse<MedicalRecordDto>.Failure("Doctor profile not found", 404);
 
             var appointment = await _unitOfWork.Appointments.Query()
-                .Include(a => a.Patient)
+                .Include(a => a.Patient).ThenInclude(p => p!.User)
+                .Include(a => a.FamilyMember)
+                .Include(a => a.MedicalRecord)
                 .FirstOrDefaultAsync(a => a.Id == appointmentId && a.DoctorId == doctor.Id);
 
             if (appointment == null)
                 return ApiResponse<MedicalRecordDto>.Failure("Appointment not found or does not belong to this doctor", 404);
 
-            if (appointment.Status == AppointmentStatus.Completed || appointment.Status == AppointmentStatus.Cancelled)
-                return ApiResponse<MedicalRecordDto>.Failure("This appointment is already completed or cancelled", 400);
+            if (appointment.Status == AppointmentStatus.Completed)
+                return ApiResponse<MedicalRecordDto>.Failure("This consultation has already been completed", 400);
 
-            int patientId;
-            if (appointment.PatientId.HasValue)
+            if (appointment.Status == AppointmentStatus.Cancelled)
+                return ApiResponse<MedicalRecordDto>.Failure("This appointment has been cancelled", 400);
+
+            if (appointment.MedicalRecord != null)
+                return ApiResponse<MedicalRecordDto>.Failure("This consultation has already been completed", 400);
+
+            if (appointment.Status != AppointmentStatus.InProgress
+                || appointment.QueueStatus != QueueStatus.InConsultation)
             {
-                patientId = appointment.PatientId.Value;
+                return ApiResponse<MedicalRecordDto>.Failure(
+                    "Consultation must be started before it can be completed", 400);
+            }
+
+            var patientId = await EnsureAppointmentPatientIdAsync(appointment);
+            if (patientId == null)
+                return ApiResponse<MedicalRecordDto>.Failure("Unable to resolve patient for this appointment", 400);
+
+            string? prescriptionContent = null;
+            if (dto.Medications != null && dto.Medications.Any())
+                prescriptionContent = JsonSerializer.Serialize(dto.Medications);
+
+            MedicalRecord record;
+            using (var transaction = await _unitOfWork.Context.Database.BeginTransactionAsync(IsolationLevel.Serializable))
+            {
+                try
+                {
+                    record = new MedicalRecord
+                    {
+                        PatientId = patientId.Value,
+                        FamilyMemberId = appointment.FamilyMemberId,
+                        DoctorId = doctor.Id,
+                        AppointmentId = appointmentId,
+                        Diagnosis = dto.Diagnosis.Trim(),
+                        Prescription = prescriptionContent,
+                        Instructions = dto.Instructions,
+                        VisitDate = DateTime.UtcNow
+                    };
+
+                    await _unitOfWork.MedicalRecords.AddAsync(record);
+
+                    appointment.Status = AppointmentStatus.Completed;
+                    appointment.QueueStatus = QueueStatus.Completed;
+                    appointment.IsPaid = true;
+                    appointment.PaymentStatus = PaymentStatus.Paid;
+
+                    _unitOfWork.Appointments.Update(appointment);
+                    await _unitOfWork.CompleteAsync();
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+
+            record.Doctor = doctor;
+            record.Patient = appointment.Patient!;
+            record.FamilyMember = appointment.FamilyMember;
+
+            var recordDto = MapMedicalRecordToDto(record);
+
+            try
+            {
+                await SendConsultationCompletedNotificationAsync(appointment, dto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Consultation completed but notification failed for appointment {AppointmentId}", appointmentId);
+            }
+
+            return ApiResponse<MedicalRecordDto>.Success(recordDto, "Consultation completed successfully");
+        }
+
+        // ===== Submit Consultation Checkup Session (legacy endpoint) =====
+        public async Task<ApiResponse<MedicalRecordDto>> SubmitConsultationSessionAsync(
+            int doctorUserId, int appointmentId, CreateMedicalRecordDto dto)
+        {
+            var completeDto = new CompleteConsultationDto
+            {
+                Diagnosis = dto.Diagnosis,
+                Medications = dto.Medications,
+                Instructions = dto.Instructions
+                    ?? dto.TreatmentPlan
+                    ?? dto.Notes
+                    ?? dto.Observations
+            };
+
+            return await CompleteConsultationAsync(doctorUserId, appointmentId, completeDto);
+        }
+
+        private async Task<int?> EnsureAppointmentPatientIdAsync(Appointment appointment)
+        {
+            if (appointment.PatientId.HasValue)
+                return appointment.PatientId.Value;
+
+            var phone = appointment.OfflinePatientPhone;
+            if (string.IsNullOrEmpty(phone))
+                phone = "01000000000";
+
+            var existingUser = await _unitOfWork.Users.Query()
+                .FirstOrDefaultAsync(u => u.PhoneNumber == phone && u.Role == UserRole.Patient);
+
+            if (existingUser != null)
+            {
+                var existingPatient = await _unitOfWork.Patients.Query()
+                    .FirstOrDefaultAsync(p => p.UserId == existingUser.Id);
+                if (existingPatient != null)
+                {
+                    appointment.PatientId = existingPatient.Id;
+                    _unitOfWork.Appointments.Update(appointment);
+                    await _unitOfWork.CompleteAsync();
+                    return existingPatient.Id;
+                }
+
+                var newPatient = new Patient { UserId = existingUser.Id };
+                await _unitOfWork.Patients.AddAsync(newPatient);
+                await _unitOfWork.CompleteAsync();
+                appointment.PatientId = newPatient.Id;
+                _unitOfWork.Appointments.Update(appointment);
+                await _unitOfWork.CompleteAsync();
+                return newPatient.Id;
+            }
+
+            var tempUser = new User
+            {
+                FullName = appointment.OfflinePatientName ?? "Walk-in patient",
+                PhoneNumber = phone,
+                Role = UserRole.Patient,
+                IsActive = true
+            };
+            await _unitOfWork.Users.AddAsync(tempUser);
+            await _unitOfWork.CompleteAsync();
+
+            var walkInPatient = new Patient
+            {
+                UserId = tempUser.Id,
+                MedicalHistory = appointment.ChiefComplaint
+            };
+            await _unitOfWork.Patients.AddAsync(walkInPatient);
+            await _unitOfWork.CompleteAsync();
+
+            appointment.PatientId = walkInPatient.Id;
+            _unitOfWork.Appointments.Update(appointment);
+            await _unitOfWork.CompleteAsync();
+            return walkInPatient.Id;
+        }
+
+        private ConsultationPatientDto BuildConsultationPatient(Appointment appointment)
+        {
+            if (appointment.FamilyMemberId.HasValue && appointment.FamilyMember != null)
+            {
+                var fm = appointment.FamilyMember;
+                return new ConsultationPatientDto
+                {
+                    PatientId = appointment.PatientId,
+                    FamilyMemberId = fm.Id,
+                    FullName = fm.Name,
+                    Age = fm.Age,
+                    Gender = fm.Gender.ToString(),
+                    BloodType = fm.BloodType,
+                    ChronicConditions = SplitCsv(fm.ChronicDiseases),
+                    Allergies = SplitCsv(fm.Allergies),
+                    IsFamilyMember = true
+                };
+            }
+
+            if (appointment.PatientId.HasValue && appointment.Patient?.User != null)
+            {
+                var patient = appointment.Patient;
+                var user = patient.User;
+                int age = 0;
+                if (user.DateOfBirth.HasValue)
+                {
+                    age = DateTime.Today.Year - user.DateOfBirth.Value.Year;
+                    if (user.DateOfBirth.Value.Date > DateTime.Today.AddYears(-age)) age--;
+                }
+
+                return new ConsultationPatientDto
+                {
+                    PatientId = patient.Id,
+                    FullName = user.FullName,
+                    ProfileImageUrl = user.ProfileImageUrl,
+                    Age = age,
+                    Gender = user.Gender.ToString(),
+                    BloodType = patient.BloodType,
+                    ChronicConditions = SplitCsv(patient.ChronicDiseases),
+                    Allergies = SplitCsv(patient.Allergies),
+                    IsFamilyMember = false
+                };
+            }
+
+            return new ConsultationPatientDto
+            {
+                FullName = appointment.OfflinePatientName ?? "Walk-in patient",
+                Age = appointment.OfflinePatientAge ?? 0,
+                Gender = appointment.OfflinePatientGender?.ToString(),
+                IsFamilyMember = false
+            };
+        }
+
+        private async Task<List<MedicalRecordDto>> LoadMedicalHistoryAsync(Appointment appointment)
+        {
+            IQueryable<MedicalRecord> query = _unitOfWork.MedicalRecords.Query()
+                .Include(r => r.Patient).ThenInclude(p => p!.User)
+                .Include(r => r.FamilyMember)
+                .Include(r => r.Doctor).ThenInclude(d => d.User);
+
+            if (appointment.FamilyMemberId.HasValue)
+            {
+                query = query.Where(r => r.FamilyMemberId == appointment.FamilyMemberId);
+            }
+            else if (appointment.PatientId.HasValue)
+            {
+                query = query.Where(r => r.PatientId == appointment.PatientId && r.FamilyMemberId == null);
             }
             else
             {
-                var phone = appointment.OfflinePatientPhone;
-                if (string.IsNullOrEmpty(phone))
-                {
-                    phone = "01000000000";
-                }
-
-                var existingUser = await _unitOfWork.Users.Query()
-                    .FirstOrDefaultAsync(u => u.PhoneNumber == phone && u.Role == UserRole.Patient);
-
-                if (existingUser != null)
-                {
-                    var existingPatient = await _unitOfWork.Patients.Query().FirstOrDefaultAsync(p => p.UserId == existingUser.Id);
-                    if (existingPatient != null)
-                    {
-                        appointment.PatientId = existingPatient.Id;
-                        patientId = existingPatient.Id;
-                    }
-                    else
-                    {
-                        var newPatient = new Patient { UserId = existingUser.Id };
-                        await _unitOfWork.Patients.AddAsync(newPatient);
-                        await _unitOfWork.CompleteAsync();
-                        appointment.PatientId = newPatient.Id;
-                        patientId = newPatient.Id;
-                    }
-                }
-                else
-                {
-                    var tempUser = new User
-                    {
-                        FullName = appointment.OfflinePatientName ?? "Walk-in patient",
-                        PhoneNumber = phone,
-                        Role = UserRole.Patient,
-                        IsActive = true
-                    };
-                    await _unitOfWork.Users.AddAsync(tempUser);
-                    await _unitOfWork.CompleteAsync();
-
-                    var newPatient = new Patient
-                    {
-                        UserId = tempUser.Id,
-                        MedicalHistory = appointment.ChiefComplaint
-                    };
-                    await _unitOfWork.Patients.AddAsync(newPatient);
-                    await _unitOfWork.CompleteAsync();
-
-                    appointment.PatientId = newPatient.Id;
-                    patientId = newPatient.Id;
-                }
-                
-                _unitOfWork.Appointments.Update(appointment);
-                await _unitOfWork.CompleteAsync();
+                return new List<MedicalRecordDto>();
             }
 
-            dto.PatientId = patientId;
-            dto.AppointmentId = appointmentId;
+            var records = await query.OrderByDescending(r => r.VisitDate).ToListAsync();
+            return records.Select(MapMedicalRecordToDto).ToList();
+        }
 
-            var recordResult = await _medicalRecordService.CreateRecordAsync(doctorUserId, dto);
-            if (!recordResult.IsSuccess || recordResult.Data == null)
+        private async Task<List<PreviousVisitDto>> LoadPreviousVisitsAsync(Appointment appointment)
+        {
+            var visitsQuery = _unitOfWork.Appointments.Query()
+                .Include(a => a.Doctor).ThenInclude(d => d.User)
+                .Include(a => a.MedicalRecord)
+                .Where(a => a.Status == AppointmentStatus.Completed && a.Id != appointment.Id);
+
+            if (appointment.FamilyMemberId.HasValue)
+                visitsQuery = visitsQuery.Where(a => a.FamilyMemberId == appointment.FamilyMemberId);
+            else if (appointment.PatientId.HasValue)
+                visitsQuery = visitsQuery.Where(a => a.PatientId == appointment.PatientId && a.FamilyMemberId == null);
+            else
+                return new List<PreviousVisitDto>();
+
+            var visits = await visitsQuery
+                .OrderByDescending(a => a.AppointmentDate)
+                .ThenByDescending(a => a.StartTime)
+                .ToListAsync();
+
+            return visits.Select(a => new PreviousVisitDto
             {
-                return recordResult;
+                AppointmentId = a.Id,
+                VisitDate = a.AppointmentDate.Date.Add(a.StartTime),
+                DoctorName = a.Doctor.User.FullName,
+                Diagnosis = a.MedicalRecord?.Diagnosis,
+                ChiefComplaint = a.ChiefComplaint
+            }).ToList();
+        }
+
+        private async Task SendConsultationCompletedNotificationAsync(Appointment appointment, CompleteConsultationDto dto)
+        {
+            if (!appointment.PatientId.HasValue || appointment.Patient?.User == null)
+                return;
+
+            var medicationsText = "None";
+            if (dto.Medications != null && dto.Medications.Any())
+            {
+                medicationsText = string.Join(", ",
+                    dto.Medications.Select(m => $"{m.Name} ({m.Dosage})"));
             }
 
-            appointment.Status = AppointmentStatus.Completed;
-            appointment.QueueStatus = QueueStatus.Completed;
-            _unitOfWork.Appointments.Update(appointment);
-            await _unitOfWork.CompleteAsync();
+            var dosageText = dto.Medications != null && dto.Medications.Any()
+                ? string.Join(", ", dto.Medications.Select(m => m.Dosage))
+                : "N/A";
 
-            return recordResult;
+            var message = $"Diagnosis: {dto.Diagnosis}\n" +
+                          $"Medications: {medicationsText}\n" +
+                          $"Dosage: {dosageText}\n" +
+                          $"Instructions: {dto.Instructions ?? "None"}";
+
+            var notification = new Notification
+            {
+                UserId = appointment.Patient.UserId,
+                Title = "Consultation completed",
+                Message = message
+            };
+
+            await _unitOfWork.Notifications.AddAsync(notification);
+            await _unitOfWork.CompleteAsync();
+        }
+
+        private static List<string> SplitCsv(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return new List<string>();
+
+            return value.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .ToList();
         }
 
         // ===== Helpers Mappers =====
@@ -930,7 +1234,12 @@ namespace MedicalApp.API.Services.Implementations
                 ClinicAddress = clinic != null ? $"{clinic.Area}, {clinic.Government}" : null,
                 IsEmergency = app.IsEmergency,
                 ChiefComplaint = app.ChiefComplaint,
+                FamilyMemberId = app.FamilyMemberId,
+                FamilyMemberName = app.FamilyMember?.Name,
                 IsPaid = app.IsPaid,
+                PaymentStatus = app.PaymentStatus,
+                PaymentStatusText = app.PaymentStatus.ToString(),
+                ConsultationFee = app.ConsultationFee,
                 PaymentMethod = app.PaymentMethod,
                 PaymentMethodText = app.PaymentMethod.ToString(),
                 OfflinePatientAge = app.OfflinePatientAge,
@@ -945,7 +1254,9 @@ namespace MedicalApp.API.Services.Implementations
             {
                 Id = record.Id,
                 PatientId = record.PatientId,
-                PatientName = record.Patient?.User?.FullName ?? string.Empty,
+                PatientName = record.FamilyMember?.Name ?? record.Patient?.User?.FullName ?? string.Empty,
+                FamilyMemberId = record.FamilyMemberId,
+                FamilyMemberName = record.FamilyMember?.Name,
                 DoctorId = record.DoctorId,
                 DoctorName = record.Doctor?.User?.FullName ?? string.Empty,
                 DoctorSpecialization = record.Doctor?.Specialization ?? string.Empty,
@@ -953,6 +1264,7 @@ namespace MedicalApp.API.Services.Implementations
                 AppointmentId = record.AppointmentId,
                 Diagnosis = record.Diagnosis,
                 Prescription = record.Prescription,
+                Instructions = record.Instructions,
                 TreatmentPlan = record.TreatmentPlan,
                 Notes = record.Notes,
                 Symptoms = record.Symptoms,

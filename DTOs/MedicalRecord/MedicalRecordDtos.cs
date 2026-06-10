@@ -22,6 +22,9 @@ namespace MedicalApp.API.DTOs.MedicalRecord
         public int? AppointmentId { get; set; }
         public string Diagnosis { get; set; } = string.Empty;
         public string? Prescription { get; set; }
+        public string? Instructions { get; set; }
+        public int? FamilyMemberId { get; set; }
+        public string? FamilyMemberName { get; set; }
         public string? TreatmentPlan { get; set; }
         public string? Notes { get; set; }
         public string? Symptoms { get; set; }
@@ -57,6 +60,11 @@ namespace MedicalApp.API.DTOs.MedicalRecord
 
         [MaxLength(1000)]
         public string? Prescription { get; set; }
+
+        [MaxLength(1000)]
+        public string? Instructions { get; set; }
+
+        public int? FamilyMemberId { get; set; }
 
         [MaxLength(1000)]
         public string? TreatmentPlan { get; set; }

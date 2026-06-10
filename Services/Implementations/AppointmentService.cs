@@ -84,6 +84,7 @@ namespace MedicalApp.API.Services.Implementations
                         && a.Status != AppointmentStatus.Cancelled);
 
             var queueNumber = todayAppointmentsCount + 1;
+            var consultationFee = await ResolveConsultationFeeAsync(dto.DoctorId);
 
             // Validate Family Member if provided
             Models.Entities.FamilyMember? familyMember = null;
@@ -108,6 +109,8 @@ namespace MedicalApp.API.Services.Implementations
                 Status = AppointmentStatus.Confirmed,
                 QueueNumber = queueNumber,
                 QueueStatus = QueueStatus.Waiting,
+                ConsultationFee = consultationFee,
+                PaymentStatus = PaymentStatus.Pending,
                 Notes = dto.Notes
             };
 
@@ -118,7 +121,7 @@ namespace MedicalApp.API.Services.Implementations
             {
                 UserId = userId,
                 Title = "Booking confirmed",
-                Message = $"Your booking with Dr. {doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been confirmed."
+                Message = $"Your booking with Dr. {doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been confirmed. Consultation fee: {consultationFee:N2}."
             };
             await _unitOfWork.Notifications.AddAsync(notification);
 
@@ -224,6 +227,7 @@ namespace MedicalApp.API.Services.Implementations
                     && a.Status != AppointmentStatus.Cancelled);
 
             var queueNumber = todayAppointmentsCount + 1;
+            var consultationFee = await ResolveConsultationFeeAsync(dto.DoctorId);
 
             // Create appointment
             var appointment = new Appointment
@@ -236,12 +240,14 @@ namespace MedicalApp.API.Services.Implementations
                 Status = AppointmentStatus.Confirmed,
                 QueueNumber = queueNumber,
                 QueueStatus = QueueStatus.Waiting,
+                ConsultationFee = consultationFee,
+                IsPaid = dto.IsPaid,
+                PaymentStatus = dto.IsPaid ? PaymentStatus.Paid : PaymentStatus.Pending,
                 Notes = dto.Notes,
                 OfflinePatientName = dto.OfflinePatientName,
                 OfflinePatientPhone = dto.OfflinePatientPhone,
                 IsEmergency = dto.IsEmergency,
                 ChiefComplaint = dto.ChiefComplaint,
-                IsPaid = dto.IsPaid,
                 PaymentMethod = dto.PaymentMethod,
                 OfflinePatientAge = dto.OfflinePatientAge,
                 OfflinePatientGender = dto.OfflinePatientGender
@@ -256,7 +262,7 @@ namespace MedicalApp.API.Services.Implementations
                 {
                     UserId = registeredPatient.UserId,
                     Title = "Booking confirmed",
-                    Message = $"Your booking with Dr. {doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been confirmed."
+                    Message = $"Your booking with Dr. {doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been confirmed. Consultation fee: {consultationFee:N2}."
                 };
                 await _unitOfWork.Notifications.AddAsync(notification);
             }
@@ -447,11 +453,22 @@ namespace MedicalApp.API.Services.Implementations
                     return ApiResponse<AppointmentDto>.Failure("You are not authorized to cancel this appointment", 403);
             }
 
-            // Perform cancellation
+            // Refund is only allowed while the appointment is still waiting
+            if (appointment.Status != AppointmentStatus.Confirmed
+                || appointment.QueueStatus != QueueStatus.Waiting)
+            {
+                return ApiResponse<AppointmentDto>.Failure(
+                    "Cancellation and refund are only allowed while the appointment is waiting. Consultations that have started or completed cannot be cancelled.",
+                    400);
+            }
+
+            // Perform cancellation and refund
             appointment.Status = AppointmentStatus.Cancelled;
             appointment.CancellationReason = dto.Reason;
             appointment.QueueStatus = QueueStatus.Refunded;
-            appointment.RefundStatus = RefundStatus.Pending;
+            appointment.RefundStatus = RefundStatus.Processed;
+            appointment.PaymentStatus = PaymentStatus.Refunded;
+            appointment.IsPaid = false;
 
             _unitOfWork.Appointments.Update(appointment);
 
@@ -661,6 +678,12 @@ namespace MedicalApp.API.Services.Implementations
                     $"Cannot change appointment status from '{appointment.Status}' to '{dto.Status}'", 400);
             }
 
+            if (dto.Status == AppointmentStatus.Completed)
+            {
+                return ApiResponse<AppointmentDto>.Failure(
+                    "Use the complete consultation endpoint to finish a consultation", 400);
+            }
+
             // Update statuses
             appointment.Status = dto.Status;
             appointment.QueueStatus = dto.Status switch
@@ -675,7 +698,15 @@ namespace MedicalApp.API.Services.Implementations
 
             if (dto.Status == AppointmentStatus.Cancelled)
             {
-                appointment.RefundStatus = RefundStatus.Pending;
+                if (appointment.QueueStatus != QueueStatus.Waiting)
+                {
+                    return ApiResponse<AppointmentDto>.Failure(
+                        "Cancellation and refund are only allowed while the appointment is waiting", 400);
+                }
+
+                appointment.RefundStatus = RefundStatus.Processed;
+                appointment.PaymentStatus = PaymentStatus.Refunded;
+                appointment.IsPaid = false;
             }
 
             _unitOfWork.Appointments.Update(appointment);
@@ -699,7 +730,7 @@ namespace MedicalApp.API.Services.Implementations
                 .Where(a => a.DoctorId == doctor.Id 
                     && a.AppointmentDate.Date == DateTime.Today 
                     && a.Status != AppointmentStatus.Cancelled)
-                .OrderBy(a => a.QueueNumber)
+                .OrderBy(a => a.StartTime)
                 .ToListAsync();
 
             var dtos = todayQueue.Select(MapToDto).ToList();
@@ -752,15 +783,11 @@ namespace MedicalApp.API.Services.Implementations
 
             // Calculate patients ahead in the queue
             int myQueueNumber = appointment.QueueNumber ?? 0;
-            int patientsAhead = 0;
-            if (myQueueNumber > 0)
-            {
-                patientsAhead = await _unitOfWork.Appointments.Query()
-                    .CountAsync(a => a.DoctorId == appointment.DoctorId 
-                        && a.AppointmentDate.Date == appointment.AppointmentDate.Date 
-                        && a.QueueStatus == QueueStatus.Waiting 
-                        && a.QueueNumber < myQueueNumber);
-            }
+            int patientsAhead = await _unitOfWork.Appointments.Query()
+                .CountAsync(a => a.DoctorId == appointment.DoctorId
+                    && a.AppointmentDate.Date == appointment.AppointmentDate.Date
+                    && a.QueueStatus == QueueStatus.Waiting
+                    && a.StartTime < appointment.StartTime);
 
             // Estimating 15 minutes wait time per waiting patient
             int estimatedWaitTimeMinutes = patientsAhead * 15;
@@ -809,7 +836,7 @@ namespace MedicalApp.API.Services.Implementations
                     && a.AppointmentDate.Date == today 
                     && a.QueueStatus == QueueStatus.Waiting 
                     && a.Status == AppointmentStatus.Confirmed)
-                .OrderBy(a => a.QueueNumber)
+                .OrderBy(a => a.StartTime)
                 .FirstOrDefaultAsync();
 
             if (nextPatient == null)
@@ -929,6 +956,9 @@ namespace MedicalApp.API.Services.Implementations
                 IsEmergency = app.IsEmergency,
                 ChiefComplaint = app.ChiefComplaint,
                 IsPaid = app.IsPaid,
+                PaymentStatus = app.PaymentStatus,
+                PaymentStatusText = app.PaymentStatus.ToString(),
+                ConsultationFee = app.ConsultationFee,
                 PaymentMethod = app.PaymentMethod,
                 PaymentMethodText = app.PaymentMethod.ToString(),
                 OfflinePatientAge = app.OfflinePatientAge,
@@ -963,9 +993,11 @@ namespace MedicalApp.API.Services.Implementations
 
             var appointments = await query.ToListAsync();
 
-            int paidCount = appointments.Count(a => a.IsPaid);
+            int paidCount = appointments.Count(a => a.PaymentStatus == PaymentStatus.Paid);
             int walkInCount = appointments.Count(a => a.PatientId == null || !string.IsNullOrEmpty(a.OfflinePatientName));
-            decimal totalRevenue = appointments.Where(a => a.IsPaid).Sum(a => a.Doctor.ConsultationFee);
+            decimal totalRevenue = appointments
+                .Where(a => a.PaymentStatus == PaymentStatus.Paid)
+                .Sum(a => a.ConsultationFee);
 
             var overview = new ClinicDashboardOverviewDto
             {
@@ -1015,7 +1047,7 @@ namespace MedicalApp.API.Services.Implementations
                 .OrderBy(a => a.QueueStatus == QueueStatus.InConsultation ? 0 :
                               a.QueueStatus == QueueStatus.Waiting && a.IsEmergency ? 1 :
                               a.QueueStatus == QueueStatus.Waiting && !a.IsEmergency ? 2 : 3)
-                .ThenBy(a => a.QueueNumber)
+                .ThenBy(a => a.StartTime)
                 .Select(MapToDto)
                 .ToList();
 
@@ -1023,10 +1055,14 @@ namespace MedicalApp.API.Services.Implementations
         }
 
         // ===== Start Checkup =====
-        public async Task<ApiResponse<AppointmentDto>> StartCheckupAsync(int clinicAdminUserId, int appointmentId)
+        public async Task<ApiResponse<AppointmentDto>> StartCheckupAsync(int staffUserId, int appointmentId)
         {
+            var user = await _unitOfWork.Users.GetByIdAsync(staffUserId);
+            if (user == null || user.Role != UserRole.ClinicAdmin)
+                return ApiResponse<AppointmentDto>.Failure("You are not authorized to start a patient checkup", 403);
+
             var admin = await _unitOfWork.ClinicAdmins.Query()
-                .FirstOrDefaultAsync(a => a.UserId == clinicAdminUserId);
+                .FirstOrDefaultAsync(a => a.UserId == staffUserId);
             if (admin == null)
                 return ApiResponse<AppointmentDto>.Failure("You are not authorized to start a patient checkup", 403);
 
@@ -1035,6 +1071,7 @@ namespace MedicalApp.API.Services.Implementations
             var appointment = await _unitOfWork.Appointments.Query()
                 .Include(a => a.Patient)
                     .ThenInclude(p => p!.User)
+                .Include(a => a.FamilyMember)
                 .Include(a => a.Doctor)
                     .ThenInclude(d => d.User)
                 .Include(a => a.Doctor.DoctorClinics)
@@ -1047,51 +1084,33 @@ namespace MedicalApp.API.Services.Implementations
             if (!isLinked)
                 return ApiResponse<AppointmentDto>.Failure("This clinic admin does not have permission to manage this appointment", 403);
 
+            if (appointment.AppointmentDate.Date != DateTime.Today)
+                return ApiResponse<AppointmentDto>.Failure("Checkup can only be started for today's appointments", 400);
+
             if (appointment.Status == AppointmentStatus.Cancelled)
                 return ApiResponse<AppointmentDto>.Failure("This appointment is already cancelled and cannot be started", 400);
 
             if (appointment.Status == AppointmentStatus.Completed)
                 return ApiResponse<AppointmentDto>.Failure("This appointment is already completed", 400);
 
-            var today = DateTime.Today;
-
-            // 1. Mark any other active patient in consultation for this doctor today as Completed
-            var activeServing = await _unitOfWork.Appointments.Query()
-                .FirstOrDefaultAsync(a => a.DoctorId == appointment.DoctorId 
-                    && a.AppointmentDate.Date == today 
-                    && a.QueueStatus == QueueStatus.InConsultation
-                    && a.Id != appointment.Id);
-
-            if (activeServing != null)
+            if (appointment.Status == AppointmentStatus.InProgress
+                || appointment.QueueStatus == QueueStatus.InConsultation)
             {
-                activeServing.Status = AppointmentStatus.Completed;
-                activeServing.QueueStatus = QueueStatus.Completed;
-                _unitOfWork.Appointments.Update(activeServing);
+                return ApiResponse<AppointmentDto>.Failure("Checkup has already been started for this appointment", 400);
             }
 
-            // 2. Start checkup for selected appointment
+            if (appointment.QueueStatus != QueueStatus.Waiting)
+                return ApiResponse<AppointmentDto>.Failure("Only waiting appointments can be started", 400);
+
             appointment.Status = AppointmentStatus.InProgress;
             appointment.QueueStatus = QueueStatus.InConsultation;
 
             _unitOfWork.Appointments.Update(appointment);
             await _unitOfWork.CompleteAsync();
 
-            // Create notification for registered patient
-            if (appointment.PatientId.HasValue && appointment.Patient != null)
-            {
-                var notification = new Notification
-                {
-                    UserId = appointment.Patient.UserId,
-                    Title = "Checkup started",
-                    Message = $"You have been called in to Dr. {appointment.Doctor.User.FullName}'s clinic."
-                };
-                await _unitOfWork.Notifications.AddAsync(notification);
-                await _unitOfWork.CompleteAsync();
-            }
+            _logger.LogInformation("Clinic staff started checkup for appointment {Id}", appointmentId);
 
-            _logger.LogInformation("Clinic Admin started checkup for appointment {Id}", appointmentId);
-
-            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "Checkup started and patient called successfully");
+            return ApiResponse<AppointmentDto>.Success(MapToDto(appointment), "Checkup started successfully");
         }
 
         // ===== Get Payments Dashboard =====
@@ -1145,13 +1164,13 @@ namespace MedicalApp.API.Services.Implementations
 
             // Calculate stats
             // Revenue is calculated from active paid appointments
-            var activePaid = appointments.Where(a => a.IsPaid && a.Status != AppointmentStatus.Cancelled).ToList();
-            var refunded = appointments.Where(a => a.Status == AppointmentStatus.Cancelled && a.RefundStatus == RefundStatus.Processed).ToList();
+            var activePaid = appointments.Where(a => a.PaymentStatus == PaymentStatus.Paid).ToList();
+            var refunded = appointments.Where(a => a.PaymentStatus == PaymentStatus.Refunded).ToList();
 
-            decimal totalRevenue = activePaid.Sum(a => a.Doctor.ConsultationFee);
-            decimal cashAmount = activePaid.Where(a => a.PaymentMethod == PaymentMethod.Cash).Sum(a => a.Doctor.ConsultationFee);
-            decimal onlineAmount = activePaid.Where(a => a.PaymentMethod == PaymentMethod.Online).Sum(a => a.Doctor.ConsultationFee);
-            decimal refundsAmount = refunded.Sum(a => a.Doctor.ConsultationFee);
+            decimal totalRevenue = activePaid.Sum(a => a.ConsultationFee);
+            decimal cashAmount = activePaid.Where(a => a.PaymentMethod == PaymentMethod.Cash).Sum(a => a.ConsultationFee);
+            decimal onlineAmount = activePaid.Where(a => a.PaymentMethod == PaymentMethod.Online).Sum(a => a.ConsultationFee);
+            decimal refundsAmount = refunded.Sum(a => a.ConsultationFee);
 
             double cashPercentage = totalRevenue > 0 ? (double)(cashAmount / totalRevenue) * 100.0 : 0.0;
             double onlinePercentage = totalRevenue > 0 ? (double)(onlineAmount / totalRevenue) * 100.0 : 0.0;
@@ -1168,18 +1187,14 @@ namespace MedicalApp.API.Services.Implementations
                     else if (!string.IsNullOrEmpty(a.OfflinePatientName))
                         name = a.OfflinePatientName;
 
-                    string status = "Paid";
-                    if (a.Status == AppointmentStatus.Cancelled)
-                        status = "Refunded";
-                    else if (!a.IsPaid)
-                        status = "Pending";
+                    string status = a.PaymentStatus.ToString();
 
                     return new TransactionDto
                     {
                         AppointmentId = a.Id,
                         PatientName = name,
                         DateTime = a.AppointmentDate.Date.Add(a.StartTime),
-                        Amount = a.Doctor.ConsultationFee,
+                        Amount = a.ConsultationFee,
                         Status = status,
                         PaymentMethod = a.PaymentMethod,
                         PaymentMethodText = a.PaymentMethod.ToString()
@@ -1202,6 +1217,20 @@ namespace MedicalApp.API.Services.Implementations
             };
 
             return ApiResponse<PaymentsDashboardDto>.Success(dto, "Payments dashboard data retrieved successfully");
+        }
+
+        private async Task<decimal> ResolveConsultationFeeAsync(int doctorId)
+        {
+            var doctorClinic = await _unitOfWork.DoctorClinics.Query()
+                .Where(dc => dc.DoctorId == doctorId && dc.IsActive)
+                .OrderBy(dc => dc.Id)
+                .FirstOrDefaultAsync();
+
+            if (doctorClinic?.ConsultationFee.HasValue == true)
+                return doctorClinic.ConsultationFee.Value;
+
+            var doctor = await _unitOfWork.Doctors.GetByIdAsync(doctorId);
+            return doctor?.ConsultationFee ?? 0m;
         }
     }
 }
