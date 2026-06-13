@@ -7,7 +7,7 @@ namespace MedicalApp.API.Controllers
     [Route("api/[controller]")]
     public class InfoController : ControllerBase
     {
-        private const string BackendVersion = "1.0.0";
+        private const string BackendVersion = "1.1.0";
 
         [HttpGet("version")]
         public IActionResult GetVersion()

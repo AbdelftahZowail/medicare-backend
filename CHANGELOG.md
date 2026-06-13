@@ -2,6 +2,114 @@
 
 All notable changes to the API that the frontend should be aware of.
 
+## 2026-06-13
+
+### Added
+
+#### New endpoints
+
+**`GET /api/info/version`** — returns the current backend version. Public, no auth required.
+
+```jsonc
+{
+  "isSuccess": true,
+  "data": { "version": "1.0.0" },
+  "statusCode": 200
+}
+```
+
+**`GET /api/doctor/consultation/{appointmentId}`** — load the full consultation screen for a specific appointment. Returns `ConsultationScreenDto`. Requires `Doctor` role.
+
+**`GET /api/doctor/active-consultations`** — list the doctor's active (in-progress) consultations for today. Returns `AppointmentDto[]`. Requires `Doctor` role.
+
+**`POST /api/doctor/consultation/{appointmentId}/complete`** — complete a consultation with diagnosis, medications, and instructions. Returns `MedicalRecordDto`. Requires `Doctor` role.
+
+```jsonc
+// CompleteConsultationDto
+{
+  "diagnosis": "Upper respiratory infection",
+  "medications": [
+    { "name": "Amoxicillin", "category": "Antibiotic", "dosage": "500mg twice daily", "duration": "7 days" }
+  ],
+  "instructions": "Rest and drink plenty of fluids"
+}
+```
+
+#### New DTOs
+
+**`ConsultationScreenDto`**:
+
+```jsonc
+{
+  "appointment": { /* AppointmentDto */ },
+  "patient": {
+    "patientId": 1,          // null for walk-in/offline patients
+    "familyMemberId": null,
+    "fullName": "...",
+    "profileImageUrl": "...",
+    "age": 30,
+    "gender": "Male",
+    "bloodType": "O+",
+    "chronicConditions": [],
+    "allergies": [],
+    "isFamilyMember": false
+  },
+  "medicalHistory": [ /* MedicalRecordDto[] */ ],
+  "previousVisits": [
+    { "appointmentId": 5, "visitDate": "2026-05-01T00:00:00Z", "doctorName": "...", "diagnosis": "...", "chiefComplaint": "..." }
+  ],
+  "previousDiagnoses": ["Asthma", "Hypertension"],
+  "previousPrescriptions": [ /* PrescribedMedicationDto[] */ ]
+}
+```
+
+#### New enum
+
+**`PaymentStatus`** (send/receive as integer):
+
+| Value | Name |
+|---|---|
+| 0 | Pending |
+| 1 | Paid |
+| 2 | Refunded |
+
+#### New fields on existing responses
+
+**`AppointmentDto`** now includes:
+
+| Field | Type | Notes |
+|---|---|---|
+| `paymentStatus` | number | `PaymentStatus` enum (0/1/2) |
+| `paymentStatusText` | string | e.g. `"Pending"`, `"Paid"`, `"Refunded"` |
+| `consultationFee` | number | Fee frozen at booking time. Use this for revenue display, not `doctor.consultationFee`. |
+
+**`MedicalRecordDto`** and **`CreateMedicalRecordDto`** now include:
+
+| Field | Type | Notes |
+|---|---|---|
+| `instructions` | string? | Free-text instructions |
+| `familyMemberId` | number? | Set when the record is for a family member |
+| `familyMemberName` | string? | Display name (response only) |
+
+### Changed
+
+- **Appointment cancellation is now only allowed while the appointment is waiting.**
+  - `PUT /api/appointment/{id}/cancel` returns `400` if the appointment is already `InProgress` / `Completed` / `InConsultation`.
+  - On cancellation, refund status is immediately set to `Processed` and `paymentStatus` becomes `Refunded`.
+- **`PUT /api/appointment/{id}/status` can no longer set status to `Completed`.** Use `POST /api/doctor/consultation/{appointmentId}/complete` instead. Attempting `status: Completed` returns `400`.
+- **Queue ordering changed from `queueNumber` to `startTime`**. This affects live queue, call-next, clinic queue, and patient tracker calculations.
+- **`POST /api/appointment/{id}/start-checkup` no longer auto-completes the previously in-consultation patient.** It only starts the selected appointment. It also now rejects already-started or non-today appointments.
+
+### Fixed
+
+- **Clinic registration** now persists `address`, `email`, `latitude`, and `longitude` (not just `government`, `area`, and `linkMap`).
+- **Updating clinic doctor details** no longer wipes the doctor's schedule. `UpdateClinicDoctorAsync` is now decoupled from `RegisterClinicDoctorAsync`.
+
+### Not changed
+
+- Database migrations are included in this release. The production database has already been updated as part of the deployment.
+- All previously-existing endpoints, query parameters, and response fields are unchanged unless noted above. New fields are additive.
+
 ## 2026-06-03
 
 ### Added

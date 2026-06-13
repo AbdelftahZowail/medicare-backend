@@ -126,6 +126,7 @@ Error messages are in Arabic. Validation errors come in `errors: ["message1", "m
 | `Gender` | Male=0, Female=1 |
 | `AppointmentStatus` | Pending=0, Confirmed=1, InProgress=2, Completed=3, Cancelled=4, NoShow=5 |
 | `QueueStatus` | Waiting=0, InConsultation=1, Completed=2, Refunded=3 |
+| `PaymentStatus` | Pending=0, Paid=1, Refunded=2 |
 | `RefundStatus` | None=0, Pending=1, Processed=2 |
 | `PaymentMethod` | Cash=0, Online=1 |
 | `RelationType` | Parent=0, Child=1, Spouse=2, Sibling=3, Other=4 |
@@ -208,6 +209,9 @@ Error messages are in Arabic. Validation errors come in `errors: ["message1", "m
   isEmergency: boolean;
   chiefComplaint: string | null;
   isPaid: boolean;
+  paymentStatus: number;         // PaymentStatus enum (0=Pending, 1=Paid, 2=Refunded)
+  paymentStatusText: string;
+  consultationFee: number;      // frozen at booking time
   paymentMethodText: string;    // "Cash" or "Online"
   createdAt: string;            // ISO 8601
 }
@@ -267,12 +271,45 @@ and settable via `CreateClinicDto` / `UpdateClinicDto`.
 {
   id, patientId, patientName, doctorId, doctorName, doctorSpecialization,
   doctorProfileImageUrl, appointmentId?,
-  diagnosis, prescription?, treatmentPlan?, notes?, symptoms?,
+  diagnosis, prescription?, instructions?, familyMemberId?, familyMemberName?,
+  treatmentPlan?, notes?, symptoms?,
   subjective?, objective?, assessment?, plan?,
   bloodPressure?, heartRate?, weight?,
   medications?: { name, category, dosage, duration }[],
   observations?, recommendedCare?: string[],
   visitDate, createdAt
+}
+```
+
+### ConsultationScreenDto
+```ts
+{
+  appointment: AppointmentDto,
+  patient: {
+    patientId: number | null,
+    familyMemberId: number | null,
+    fullName: string,
+    profileImageUrl: string | null,
+    age: number,
+    gender: string | null,
+    bloodType: string | null,
+    chronicConditions: string[],
+    allergies: string[],
+    isFamilyMember: boolean
+  },
+  medicalHistory: MedicalRecordDto[],
+  previousVisits: { appointmentId, visitDate, doctorName, diagnosis?, chiefComplaint? }[],
+  previousDiagnoses: string[],
+  previousPrescriptions: { name, category, dosage, duration }[]
+}
+```
+
+### CompleteConsultationDto
+```ts
+{
+  diagnosis: string,              // required
+  medications?: { name, category, dosage, duration }[],
+  instructions?: string
 }
 ```
 
@@ -301,7 +338,8 @@ and settable via `CreateClinicDto` / `UpdateClinicDto`.
 | `POST /api/auth/verify-otp` | Verify OTP |
 | `POST /api/auth/reset-password` | Reset password |
 | `POST /api/auth/social-login` | NOT IMPLEMENTED (returns 501) |
-| `GET /api/auth/telegram-register` | Link Telegram |
+| `POST /api/auth/telegram-register` | Link Telegram |
+| `GET /api/info/version` | Backend version |
 | `GET /api/doctor` | Browse/search doctors (supports `?userLat=&userLng=` for distance sort) |
 | `GET /api/doctor/nearby` | Geospatial doctor search (returns `NearbyDoctorDto[]`) |
 | `GET /api/doctor/specializations` | List specializations |
@@ -356,6 +394,9 @@ and settable via `CreateClinicDto` / `UpdateClinicDto`.
 | `GET /api/doctor/qr-code` | Get QR code key |
 | `GET /api/doctor/patients/{patientId}/history` | Patient history |
 | `POST /api/doctor/session/{appointmentId}` | Submit consultation (SOAP) |
+| `GET /api/doctor/consultation/{appointmentId}` | Load consultation screen |
+| `GET /api/doctor/active-consultations` | Today's active consultations |
+| `POST /api/doctor/consultation/{appointmentId}/complete` | Complete consultation |
 | `GET /api/appointment/doctor?date=&status=` | My appointments |
 | `GET /api/appointment/queue/today` | Today's queue |
 | `PUT /api/appointment/{id}/status` | Change appointment status |
@@ -406,13 +447,20 @@ and settable via `CreateClinicDto` / `UpdateClinicDto`.
 
 ```
 1. Receptionist logs in as ClinicAdmin
-2. GET /clinic/queue?doctorId= → today's patient list
+2. GET /clinic/queue?doctorId= → today's patient list (ordered by startTime)
 3. Patient arrives → POST /appointment/{id}/start-checkup → patient now InConsultation
-4. Doctor sees patient → POST /doctor/session/{appointmentId} → submit diagnosis/prescription
-5. Doctor → PUT /appointment/{id}/status { status: Completed } OR
-   Doctor → POST /appointment/queue/call-next → auto-completes current + calls next
-6. Reception → GET /appointment/clinic/payments-dashboard → daily revenue
+4. Doctor loads screen → GET /doctor/consultation/{appointmentId} → patient info + history
+5. Doctor completes visit → POST /doctor/consultation/{appointmentId}/complete → creates MedicalRecord
+6. Doctor calls next → POST /appointment/queue/call-next → moves queue forward
+7. Reception → GET /appointment/clinic/payments-dashboard → daily revenue
 ```
+
+**Important changes:**
+- Queue ordering is now by `startTime`, not `queueNumber`.
+- `start-checkup` no longer auto-completes the previous patient; use `call-next` or the consultation-complete endpoint.
+- `PUT /appointment/{id}/status { status: Completed }` is rejected. Use `POST /doctor/consultation/{id}/complete` instead.
+- Cancellations are only allowed while the appointment is still waiting (`QueueStatus = Waiting`). Cancelled appointments are immediately refunded (`PaymentStatus = Refunded`).
+- `AppointmentDto` now carries `paymentStatus`, `paymentStatusText`, and a frozen `consultationFee` for accurate revenue display.
 
 ---
 
