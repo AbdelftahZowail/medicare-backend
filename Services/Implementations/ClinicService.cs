@@ -192,7 +192,6 @@ namespace MedicalApp.API.Services.Implementations
             if (dto.Longitude.HasValue) clinic.Longitude = dto.Longitude;
             if (dto.OpeningTime.HasValue) clinic.OpeningTime = dto.OpeningTime;
             if (dto.ClosingTime.HasValue) clinic.ClosingTime = dto.ClosingTime;
-            if (dto.LogoUrl != null) clinic.LogoUrl = dto.LogoUrl;
 
             _unitOfWork.Clinics.Update(clinic);
             await _unitOfWork.CompleteAsync();
