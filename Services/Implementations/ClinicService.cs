@@ -140,6 +140,7 @@ namespace MedicalApp.API.Services.Implementations
                 LinkMap = dto.LinkMap,
                 PhoneNumber = dto.PhoneNumber,
                 Email = dto.Email,
+                LogoUrl = dto.LogoUrl,
                 Latitude = dto.Latitude,
                 Longitude = dto.Longitude,
                 OpeningTime = dto.OpeningTime,
@@ -186,6 +187,7 @@ namespace MedicalApp.API.Services.Implementations
             if (dto.LinkMap != null) clinic.LinkMap = dto.LinkMap;
             if (dto.PhoneNumber != null) clinic.PhoneNumber = dto.PhoneNumber;
             if (dto.Email != null) clinic.Email = dto.Email;
+            if (dto.LogoUrl != null) clinic.LogoUrl = dto.LogoUrl;
             if (dto.Latitude.HasValue) clinic.Latitude = dto.Latitude;
             if (dto.Longitude.HasValue) clinic.Longitude = dto.Longitude;
             if (dto.OpeningTime.HasValue) clinic.OpeningTime = dto.OpeningTime;

@@ -57,6 +57,9 @@ namespace MedicalApp.API.DTOs.Clinic
         [EmailAddress]
         public string? Email { get; set; }
 
+        [MaxLength(500)]
+        public string? LogoUrl { get; set; }
+
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
         public TimeSpan? OpeningTime { get; set; }
@@ -98,6 +101,9 @@ namespace MedicalApp.API.DTOs.Clinic
         [MaxLength(100)]
         [EmailAddress]
         public string? Email { get; set; }
+
+        [MaxLength(500)]
+        public string? LogoUrl { get; set; }
 
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
