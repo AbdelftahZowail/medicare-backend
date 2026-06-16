@@ -162,8 +162,6 @@ namespace MedicalApp.API.DTOs.Auth
 
         public int? YearsOfExperience { get; set; }
 
-        public decimal? ConsultationFee { get; set; }
-
         [MaxLength(1000)]
         public string? Bio { get; set; }
 

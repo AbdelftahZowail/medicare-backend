@@ -165,7 +165,6 @@ namespace MedicalApp.API.Services.Implementations
                 LicenseImageUrl = dto.LicenseFileUrl,
                 SubSpecialty = dto.SubSpecialty,
                 YearsOfExperience = dto.YearsOfExperience ?? 0,
-                ConsultationFee = dto.ConsultationFee ?? 0,
                 Bio = dto.Bio,
                 Degree = dto.Degree,
                 University = dto.University,
