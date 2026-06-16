@@ -47,7 +47,7 @@ namespace MedicalApp.API.Controllers
                 await file.CopyToAsync(stream);
             }
 
-            var fileUrl = $"/uploads/licenses/{fileName}";
+            var fileUrl = $"{Request.Scheme}://{Request.Host}/uploads/licenses/{fileName}";
 
             return Ok(new { isSuccess = true, message = "File uploaded successfully", data = new { url = fileUrl } });
         }
@@ -78,7 +78,7 @@ namespace MedicalApp.API.Controllers
                 await file.CopyToAsync(stream);
             }
 
-            var fileUrl = $"/uploads/profiles/{fileName}";
+            var fileUrl = $"{Request.Scheme}://{Request.Host}/uploads/profiles/{fileName}";
 
             return Ok(new { isSuccess = true, message = "Image uploaded successfully", data = new { url = fileUrl } });
         }

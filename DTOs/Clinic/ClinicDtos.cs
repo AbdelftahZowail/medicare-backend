@@ -103,5 +103,8 @@ namespace MedicalApp.API.DTOs.Clinic
         public double? Longitude { get; set; }
         public TimeSpan? OpeningTime { get; set; }
         public TimeSpan? ClosingTime { get; set; }
+
+        [MaxLength(500)]
+        public string? LogoUrl { get; set; }
     }
 }
