@@ -17,8 +17,6 @@ namespace MedicalApp.API.DTOs.Patient
         public string? BloodType { get; set; }
         public string? Allergies { get; set; }
         public string? ChronicDiseases { get; set; }
-        public string? EmergencyContactName { get; set; }
-        public string? EmergencyContactPhone { get; set; }
     }
 
     public class UpdatePatientProfileDto
@@ -33,8 +31,6 @@ namespace MedicalApp.API.DTOs.Patient
         public string? BloodType { get; set; }
         public string? Allergies { get; set; }
         public string? ChronicDiseases { get; set; }
-        public string? EmergencyContactName { get; set; }
-        public string? EmergencyContactPhone { get; set; }
         public string? ProfileImageUrl { get; set; }
     }
 }

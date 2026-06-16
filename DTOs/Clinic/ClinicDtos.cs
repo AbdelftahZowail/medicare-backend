@@ -6,8 +6,6 @@ namespace MedicalApp.API.DTOs.Clinic
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
-        public string? FacilityId { get; set; }
-        public string? Description { get; set; }
         public string? Government { get; set; }
         public string? Area { get; set; }
         public string? Address { get; set; }
@@ -29,12 +27,6 @@ namespace MedicalApp.API.DTOs.Clinic
         [Required(ErrorMessage = "Clinic name is required")]
         [MaxLength(200)]
         public string Name { get; set; } = string.Empty;
-
-        [MaxLength(100)]
-        public string? FacilityId { get; set; }
-
-        [MaxLength(500)]
-        public string? Description { get; set; }
 
         [Required(ErrorMessage = "Government is required")]
         [MaxLength(100)]
@@ -76,12 +68,6 @@ namespace MedicalApp.API.DTOs.Clinic
     {
         [MaxLength(200)]
         public string? Name { get; set; }
-
-        [MaxLength(100)]
-        public string? FacilityId { get; set; }
-
-        [MaxLength(500)]
-        public string? Description { get; set; }
 
         [MaxLength(100)]
         public string? Government { get; set; }

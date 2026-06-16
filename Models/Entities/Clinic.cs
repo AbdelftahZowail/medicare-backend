@@ -14,12 +14,6 @@ namespace MedicalApp.API.Models.Entities
         public string Name { get; set; } = string.Empty;
 
         [MaxLength(100)]
-        public string? FacilityId { get; set; }
-
-        [MaxLength(500)]
-        public string? Description { get; set; }
-
-        [MaxLength(100)]
         public string? Government { get; set; }
 
         [MaxLength(100)]

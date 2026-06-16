@@ -51,12 +51,6 @@ namespace MedicalApp.API.DTOs.Auth
         [MaxLength(200)]
         public string? ChronicDiseases { get; set; }
 
-        [MaxLength(100)]
-        public string? EmergencyContactName { get; set; }
-
-        [MaxLength(20)]
-        public string? EmergencyContactPhone { get; set; }
-
         [Required(ErrorMessage = "Password is required")]
         [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
         public string Password { get; set; } = string.Empty;
@@ -72,12 +66,6 @@ namespace MedicalApp.API.DTOs.Auth
         [Required(ErrorMessage = "Clinic name is required")]
         [MaxLength(200)]
         public string ClinicName { get; set; } = string.Empty;
-
-        [MaxLength(100)]
-        public string? FacilityId { get; set; }
-
-        [MaxLength(500)]
-        public string? Description { get; set; }
 
         [MaxLength(500)]
         public string? LinkMap { get; set; }

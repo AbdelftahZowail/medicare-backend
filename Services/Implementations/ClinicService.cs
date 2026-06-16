@@ -30,7 +30,6 @@ namespace MedicalApp.API.Services.Implementations
             {
                 Id = c.Id,
                 Name = c.Name,
-                Description = c.Description,
                 Government = c.Government,
                 Area = c.Area,
                 Address = c.Address,
@@ -84,8 +83,6 @@ namespace MedicalApp.API.Services.Implementations
                 {
                     Id = c.Id,
                     Name = c.Name,
-                    FacilityId = c.FacilityId,
-                    Description = c.Description,
                     Government = c.Government,
                     Area = c.Area,
                     Address = c.Address,
@@ -132,8 +129,6 @@ namespace MedicalApp.API.Services.Implementations
             var clinic = new Models.Entities.Clinic
             {
                 Name = dto.Name,
-                FacilityId = dto.FacilityId,
-                Description = dto.Description,
                 Government = dto.Government,
                 Area = dto.Area,
                 Address = dto.Address,
@@ -179,8 +174,6 @@ namespace MedicalApp.API.Services.Implementations
                 return ApiResponse<ClinicDto>.Failure("Clinic not found", 404);
 
             if (!string.IsNullOrEmpty(dto.Name)) clinic.Name = dto.Name;
-            if (dto.FacilityId != null) clinic.FacilityId = dto.FacilityId;
-            if (dto.Description != null) clinic.Description = dto.Description;
             if (!string.IsNullOrEmpty(dto.Government)) clinic.Government = dto.Government;
             if (!string.IsNullOrEmpty(dto.Area)) clinic.Area = dto.Area;
             if (dto.Address != null) clinic.Address = dto.Address;
@@ -203,8 +196,6 @@ namespace MedicalApp.API.Services.Implementations
         {
             Id = clinic.Id,
             Name = clinic.Name,
-            FacilityId = clinic.FacilityId,
-            Description = clinic.Description,
             Government = clinic.Government,
             Area = clinic.Area,
             Address = clinic.Address,

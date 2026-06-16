@@ -60,9 +60,7 @@ namespace MedicalApp.API.Services.Implementations
                 Address = dto.Address,
                 BloodType = dto.BloodType,
                 Allergies = dto.Allergies,
-                ChronicDiseases = dto.ChronicDiseases,
-                EmergencyContactName = dto.EmergencyContactName,
-                EmergencyContactPhone = dto.EmergencyContactPhone
+                ChronicDiseases = dto.ChronicDiseases
             };
             await _unitOfWork.Patients.AddAsync(patient);
             await _unitOfWork.CompleteAsync();
@@ -98,8 +96,6 @@ namespace MedicalApp.API.Services.Implementations
             var clinic = new Clinic
             {
                 Name = dto.ClinicName,
-                FacilityId = dto.FacilityId,
-                Description = dto.Description,
                 Government = dto.Government,
                 Area = dto.Area,
                 Address = dto.Address,
