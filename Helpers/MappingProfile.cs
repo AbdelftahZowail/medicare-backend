@@ -18,7 +18,8 @@ namespace MedicalApp.API.Helpers
             CreateMap<Doctor, DoctorProfileDto>()
                 .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.User.FullName))
                 .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User.PhoneNumber))
-                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User.Email));
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User.Email))
+                .ForMember(dest => dest.Languages, opt => opt.Ignore());
 
             CreateMap<Doctor, DoctorListItemDto>();
             CreateMap<Clinic, ClinicDto>();
