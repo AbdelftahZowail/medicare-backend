@@ -79,6 +79,7 @@ namespace MedicalApp.API.DTOs.Appointment
         public string? Notes { get; set; }
         public string? CancellationReason { get; set; }
         public string? DoctorProfileImageUrl { get; set; }
+        public string? PatientProfileImageUrl { get; set; }
         public int? ClinicId { get; set; }
         public string? ClinicName { get; set; }
         public string? ClinicAddress { get; set; }

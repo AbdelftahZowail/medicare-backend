@@ -862,11 +862,13 @@ namespace MedicalApp.API.Services.Implementations
         {
             string patientName = "Walk-in patient";
             string phone = string.Empty;
+            string? patientProfileImageUrl = null;
 
             if (app.Patient != null && app.Patient.User != null)
             {
                 patientName = app.Patient.User.FullName;
                 phone = app.Patient.User.PhoneNumber;
+                patientProfileImageUrl = app.Patient.User.ProfileImageUrl;
             }
             else if (!string.IsNullOrWhiteSpace(app.OfflinePatientName))
             {
@@ -937,6 +939,7 @@ namespace MedicalApp.API.Services.Implementations
                 DoctorName = app.Doctor?.User?.FullName ?? string.Empty,
                 Specialization = app.Doctor?.Specialization ?? string.Empty,
                 DoctorProfileImageUrl = app.Doctor?.User?.ProfileImageUrl,
+                PatientProfileImageUrl = patientProfileImageUrl,
                 ClinicId = clinicId,
                 ClinicName = clinicName,
                 ClinicAddress = clinicAddress,
