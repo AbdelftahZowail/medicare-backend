@@ -42,15 +42,28 @@ namespace MedicalApp.API.Services.Implementations
             {
                 FullName = dto.Name,
                 PhoneNumber = dto.Phone.Trim(),
+                Email = dto.Email?.Trim(),
+                Gender = dto.Gender,
+                Age = dto.Age,
+                DateOfBirth = dto.DateOfBirth,
+                ProfileImageUrl = dto.ProfileImageUrl,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                Role = UserRole.Patient,
-                Age = dto.Age
+                Role = UserRole.Patient
             };
 
             await _unitOfWork.Users.AddAsync(user);
             await _unitOfWork.CompleteAsync();
 
-            var patient = new Patient { UserId = user.Id };
+            var patient = new Patient
+            {
+                UserId = user.Id,
+                Address = dto.Address,
+                BloodType = dto.BloodType,
+                Allergies = dto.Allergies,
+                ChronicDiseases = dto.ChronicDiseases,
+                EmergencyContactName = dto.EmergencyContactName,
+                EmergencyContactPhone = dto.EmergencyContactPhone
+            };
             await _unitOfWork.Patients.AddAsync(patient);
             await _unitOfWork.CompleteAsync();
 
@@ -85,12 +98,15 @@ namespace MedicalApp.API.Services.Implementations
             var clinic = new Clinic
             {
                 Name = dto.ClinicName,
+                FacilityId = dto.FacilityId,
+                Description = dto.Description,
                 Government = dto.Government,
                 Area = dto.Area,
                 Address = dto.Address,
                 LinkMap = dto.LinkMap,
                 PhoneNumber = dto.Phone,
                 Email = dto.Email,
+                LogoUrl = dto.LogoUrl,
                 LicenseImageUrl = dto.LicenseFileUrl,
                 Latitude = dto.Latitude,
                 Longitude = dto.Longitude,
@@ -131,6 +147,10 @@ namespace MedicalApp.API.Services.Implementations
             {
                 FullName = dto.Name,
                 PhoneNumber = dto.Phone.Trim(),
+                Email = dto.Email?.Trim(),
+                Gender = dto.Gender,
+                DateOfBirth = dto.DateOfBirth,
+                ProfileImageUrl = dto.ProfileImageUrl,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
                 Role = UserRole.Doctor
             };
@@ -142,7 +162,16 @@ namespace MedicalApp.API.Services.Implementations
             {
                 UserId = user.Id,
                 Specialization = dto.Specialization,
-                LicenseImageUrl = dto.LicenseFileUrl
+                LicenseImageUrl = dto.LicenseFileUrl,
+                SubSpecialty = dto.SubSpecialty,
+                YearsOfExperience = dto.YearsOfExperience ?? 0,
+                ConsultationFee = dto.ConsultationFee ?? 0,
+                Bio = dto.Bio,
+                Degree = dto.Degree,
+                University = dto.University,
+                GraduationYear = dto.GraduationYear,
+                BoardCertification = dto.BoardCertification,
+                Languages = dto.Languages
             };
 
             await _unitOfWork.Doctors.AddAsync(doctor);

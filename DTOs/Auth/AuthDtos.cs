@@ -25,8 +25,37 @@ namespace MedicalApp.API.DTOs.Auth
         [MaxLength(20)]
         public string Phone { get; set; } = string.Empty;
 
+        [MaxLength(100)]
+        [EmailAddress(ErrorMessage = "Invalid email format")]
+        public string? Email { get; set; }
+
         [Required(ErrorMessage = "Age is required")]
         public int Age { get; set; }
+
+        public Gender? Gender { get; set; }
+
+        public DateTime? DateOfBirth { get; set; }
+
+        [MaxLength(500)]
+        public string? ProfileImageUrl { get; set; }
+
+        [MaxLength(200)]
+        public string? Address { get; set; }
+
+        [MaxLength(50)]
+        public string? BloodType { get; set; }
+
+        [MaxLength(200)]
+        public string? Allergies { get; set; }
+
+        [MaxLength(200)]
+        public string? ChronicDiseases { get; set; }
+
+        [MaxLength(100)]
+        public string? EmergencyContactName { get; set; }
+
+        [MaxLength(20)]
+        public string? EmergencyContactPhone { get; set; }
 
         [Required(ErrorMessage = "Password is required")]
         [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
@@ -43,6 +72,12 @@ namespace MedicalApp.API.DTOs.Auth
         [Required(ErrorMessage = "Clinic name is required")]
         [MaxLength(200)]
         public string ClinicName { get; set; } = string.Empty;
+
+        [MaxLength(100)]
+        public string? FacilityId { get; set; }
+
+        [MaxLength(500)]
+        public string? Description { get; set; }
 
         [MaxLength(500)]
         public string? LinkMap { get; set; }
@@ -68,6 +103,9 @@ namespace MedicalApp.API.DTOs.Auth
 
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+
+        [MaxLength(500)]
+        public string? LogoUrl { get; set; }
 
         [Required(ErrorMessage = "Password is required")]
         [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
@@ -96,6 +134,17 @@ namespace MedicalApp.API.DTOs.Auth
         [MaxLength(20)]
         public string Phone { get; set; } = string.Empty;
 
+        [MaxLength(100)]
+        [EmailAddress(ErrorMessage = "Invalid email format")]
+        public string? Email { get; set; }
+
+        public Gender? Gender { get; set; }
+
+        public DateTime? DateOfBirth { get; set; }
+
+        [MaxLength(500)]
+        public string? ProfileImageUrl { get; set; }
+
         [Required(ErrorMessage = "Password is required")]
         [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
         public string Password { get; set; } = string.Empty;
@@ -107,6 +156,30 @@ namespace MedicalApp.API.DTOs.Auth
         [Required(ErrorMessage = "Specialization is required")]
         [MaxLength(100)]
         public string Specialization { get; set; } = string.Empty;
+
+        [MaxLength(100)]
+        public string? SubSpecialty { get; set; }
+
+        public int? YearsOfExperience { get; set; }
+
+        public decimal? ConsultationFee { get; set; }
+
+        [MaxLength(1000)]
+        public string? Bio { get; set; }
+
+        [MaxLength(100)]
+        public string? Degree { get; set; }
+
+        [MaxLength(100)]
+        public string? University { get; set; }
+
+        public int? GraduationYear { get; set; }
+
+        [MaxLength(200)]
+        public string? BoardCertification { get; set; }
+
+        [MaxLength(200)]
+        public string? Languages { get; set; }
 
         [Required(ErrorMessage = "Doctor license is required")]
         [MaxLength(500)]
