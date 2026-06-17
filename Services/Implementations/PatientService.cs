@@ -51,8 +51,6 @@ namespace MedicalApp.API.Services.Implementations
             if (dto.BloodType != null) patient.BloodType = dto.BloodType;
             if (dto.Allergies != null) patient.Allergies = dto.Allergies;
             if (dto.ChronicDiseases != null) patient.ChronicDiseases = dto.ChronicDiseases;
-            if (dto.EmergencyContactName != null) patient.EmergencyContactName = dto.EmergencyContactName;
-            if (dto.EmergencyContactPhone != null) patient.EmergencyContactPhone = dto.EmergencyContactPhone;
 
             _unitOfWork.Patients.Update(patient);
             await _unitOfWork.CompleteAsync();
@@ -75,8 +73,6 @@ namespace MedicalApp.API.Services.Implementations
             BloodType = patient.BloodType,
             Allergies = patient.Allergies,
             ChronicDiseases = patient.ChronicDiseases,
-            EmergencyContactName = patient.EmergencyContactName,
-            EmergencyContactPhone = patient.EmergencyContactPhone
         };
 
         public async Task<ApiResponse<bool>> ToggleFavoriteDoctorAsync(int userId, int doctorId)
@@ -178,8 +174,6 @@ namespace MedicalApp.API.Services.Implementations
                     BloodType = p.BloodType,
                     Allergies = p.Allergies,
                     ChronicDiseases = p.ChronicDiseases,
-                    EmergencyContactName = p.EmergencyContactName,
-                    EmergencyContactPhone = p.EmergencyContactPhone
                 })
                 .ToListAsync();
 
