@@ -1249,7 +1249,7 @@ namespace MedicalApp.API.Services.Implementations
                 Id = app.Id,
                 PatientId = app.PatientId,
                 PatientName = app.PatientId.HasValue
-                    ? (app.Patient?.User?.FullName ?? string.Empty)
+                    ? (app.FamilyMember?.Name ?? app.Patient?.User?.FullName ?? string.Empty)
                     : (app.OfflinePatientName ?? "Unregistered patient"),
                 OfflinePatientPhone = app.OfflinePatientPhone,
                 DoctorId = app.DoctorId,

@@ -823,6 +823,7 @@ namespace MedicalApp.API.Services.Implementations
             var todayQueue = await _unitOfWork.Appointments.Query()
                 .Include(a => a.Patient)
                     .ThenInclude(p => p!.User)
+                .Include(a => a.FamilyMember)
                 .Where(a => a.DoctorId == doctor.Id 
                     && a.AppointmentDate.Date == DateTime.Today 
                     && a.Status != AppointmentStatus.Cancelled)
@@ -928,6 +929,7 @@ namespace MedicalApp.API.Services.Implementations
             var nextPatient = await _unitOfWork.Appointments.Query()
                 .Include(a => a.Patient)
                     .ThenInclude(p => p!.User)
+                .Include(a => a.FamilyMember)
                 .Where(a => a.DoctorId == doctor.Id 
                     && a.AppointmentDate.Date == today 
                     && a.QueueStatus == QueueStatus.Waiting 
@@ -962,7 +964,7 @@ namespace MedicalApp.API.Services.Implementations
 
             if (app.Patient != null && app.Patient.User != null)
             {
-                patientName = app.Patient.User.FullName;
+                patientName = app.FamilyMember?.Name ?? app.Patient.User.FullName;
                 phone = app.Patient.User.PhoneNumber;
                 patientProfileImageUrl = app.Patient.User.ProfileImageUrl;
             }
@@ -1128,6 +1130,7 @@ namespace MedicalApp.API.Services.Implementations
             var appointments = await _unitOfWork.Appointments.Query()
                 .Include(a => a.Patient)
                     .ThenInclude(p => p!.User)
+                .Include(a => a.FamilyMember)
                 .Include(a => a.Doctor)
                     .ThenInclude(d => d.User)
                 .Include(a => a.Doctor.DoctorClinics)

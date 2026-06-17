@@ -26,6 +26,7 @@ namespace MedicalApp.API.Helpers
 
             CreateMap<Appointment, AppointmentDto>()
                 .ForMember(dest => dest.PatientName, opt => opt.MapFrom(src => src.Patient != null ? src.Patient.User.FullName : src.OfflinePatientName))
+                .ForMember(dest => dest.FamilyMemberName, opt => opt.MapFrom(src => src.FamilyMember != null ? src.FamilyMember.Name : null))
                 .ForMember(dest => dest.DoctorName, opt => opt.MapFrom(src => src.Doctor.User.FullName));
 
             CreateMap<DoctorSchedule, MedicalApp.API.DTOs.Schedule.DoctorScheduleDto>();
