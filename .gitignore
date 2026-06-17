@@ -45,5 +45,8 @@ publish/
 .DS_Store
 Thumbs.db
 
+## Firebase
+Firebase/*.json
+
 ## RAR
 *.rar

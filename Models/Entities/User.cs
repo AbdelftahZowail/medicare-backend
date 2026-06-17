@@ -42,5 +42,8 @@ namespace MedicalApp.API.Models.Entities
         public Doctor? Doctor { get; set; }
         public ClinicAdmin? ClinicAdmin { get; set; }
         public List<RefreshToken>? RefreshTokens { get; set; }
+
+        [MaxLength(500)]
+        public string? FcmToken { get; set; }
     }
 }

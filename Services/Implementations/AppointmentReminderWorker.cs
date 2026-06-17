@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using MedicalApp.API.Data;
 using MedicalApp.API.Models.Entities;
 using MedicalApp.API.Models.Enums;
+using MedicalApp.API.Services.Interfaces;
 
 namespace MedicalApp.API.Services.Implementations
 {
@@ -108,6 +109,9 @@ namespace MedicalApp.API.Services.Implementations
 
                         await dbContext.Notifications.AddAsync(notification);
                         _logger.LogInformation("Sent 1-hour appointment reminder to patient user ID {UserId} for appointment ID {AppId}", userId, appointment.Id);
+
+                        var firebaseService = scope.ServiceProvider.GetRequiredService<IFirebaseNotificationService>();
+                        await firebaseService.SendToUserAsync(userId, "Appointment reminder", $"Your appointment with Dr. {appointment.Doctor.User.FullName} is in one hour.");
                     }
                 }
 

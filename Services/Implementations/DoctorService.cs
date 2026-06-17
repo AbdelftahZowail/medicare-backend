@@ -20,17 +20,20 @@ namespace MedicalApp.API.Services.Implementations
         private readonly IMapper _mapper;
         private readonly IMedicalRecordService _medicalRecordService;
         private readonly ILogger<DoctorService> _logger;
+        private readonly IFirebaseNotificationService _firebaseService;
 
         public DoctorService(
             IUnitOfWork unitOfWork,
             IMapper mapper,
             IMedicalRecordService medicalRecordService,
-            ILogger<DoctorService> logger)
+            ILogger<DoctorService> logger,
+            IFirebaseNotificationService firebaseService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _medicalRecordService = medicalRecordService;
             _logger = logger;
+            _firebaseService = firebaseService;
         }
 
         public async Task<ApiResponse<List<DoctorListItemDto>>> GetAllDoctorsAsync(
@@ -1200,6 +1203,8 @@ namespace MedicalApp.API.Services.Implementations
                     .Select(d => d.User.FullName)
                     .FirstOrDefaultAsync() ?? "Doctor";
 
+                await _firebaseService.SendToUserAsync(appointment.Patient.UserId, "Consultation completed", $"Your consultation with Dr. {doctorName} has been completed.");
+
                 var completeClinicAdmins = await _unitOfWork.ClinicAdmins.Query()
                     .Where(ca => ca.ClinicId == completeClinicId)
                     .Select(ca => ca.UserId)
@@ -1215,6 +1220,8 @@ namespace MedicalApp.API.Services.Implementations
                     };
                     await _unitOfWork.Notifications.AddAsync(adminNotif);
                 }
+
+                await _firebaseService.SendToMultipleUsersAsync(completeClinicAdmins, "Consultation completed", $"Consultation for {appointment.Patient.User.FullName} with Dr. {doctorName} has been completed.");
             }
 
             await _unitOfWork.CompleteAsync();

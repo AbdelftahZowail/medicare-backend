@@ -13,11 +13,13 @@ namespace MedicalApp.API.Services.Implementations
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<AppointmentService> _logger;
+        private readonly IFirebaseNotificationService _firebaseService;
 
-        public AppointmentService(IUnitOfWork unitOfWork, ILogger<AppointmentService> logger)
+        public AppointmentService(IUnitOfWork unitOfWork, ILogger<AppointmentService> logger, IFirebaseNotificationService firebaseService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _firebaseService = firebaseService;
         }
 
         // ===== Create Patient Appointment (Online Booking via App) =====
@@ -124,6 +126,7 @@ namespace MedicalApp.API.Services.Implementations
                 Message = $"Your booking with Dr. {doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been confirmed. Consultation fee: {consultationFee:N2}."
             };
             await _unitOfWork.Notifications.AddAsync(patientNotification);
+            await _firebaseService.SendToUserAsync(userId, "Booking confirmed", $"Your booking with Dr. {doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been confirmed.");
 
             var doctorNotification = new Notification
             {
@@ -132,6 +135,7 @@ namespace MedicalApp.API.Services.Implementations
                 Message = $"You have a new booking with patient {patient.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm}."
             };
             await _unitOfWork.Notifications.AddAsync(doctorNotification);
+            await _firebaseService.SendToUserAsync(doctor.UserId, "New booking", $"You have a new booking with patient {patient.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm}.");
 
             var clinicAdmins = await _unitOfWork.ClinicAdmins.Query()
                 .Where(ca => ca.ClinicId == schedule.ClinicId)
@@ -148,6 +152,8 @@ namespace MedicalApp.API.Services.Implementations
                 };
                 await _unitOfWork.Notifications.AddAsync(adminNotification);
             }
+
+            if (clinicAdmins.Any()) await _firebaseService.SendToMultipleUsersAsync(clinicAdmins, "New booking", $"New booking for Dr. {doctor.User.FullName} with patient {patient.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm}.");
 
             await _unitOfWork.CompleteAsync();
             await transaction.CommitAsync();
@@ -289,6 +295,7 @@ namespace MedicalApp.API.Services.Implementations
                     Message = $"Your booking with Dr. {doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been confirmed. Consultation fee: {consultationFee:N2}."
                 };
                 await _unitOfWork.Notifications.AddAsync(patientNotification);
+                if (registeredPatient != null) await _firebaseService.SendToUserAsync(registeredPatient.UserId, "Booking confirmed", $"Your booking with Dr. {doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been confirmed.");
             }
 
             var patientName = registeredPatient?.User?.FullName ?? dto.OfflinePatientName ?? "Walk-in";
@@ -299,6 +306,7 @@ namespace MedicalApp.API.Services.Implementations
                 Message = $"You have a new booking with patient {patientName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm}."
             };
             await _unitOfWork.Notifications.AddAsync(docNotification);
+            await _firebaseService.SendToUserAsync(doctor.UserId, "New booking", $"You have a new booking with patient {patientName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm}.");
 
             var clinicAdmins = await _unitOfWork.ClinicAdmins.Query()
                 .Where(ca => ca.ClinicId == schedule.ClinicId)
@@ -315,6 +323,8 @@ namespace MedicalApp.API.Services.Implementations
                 };
                 await _unitOfWork.Notifications.AddAsync(adminNotification);
             }
+
+            await _firebaseService.SendToMultipleUsersAsync(clinicAdmins, "New booking", $"New booking for Dr. {doctor.User.FullName} with patient {patientName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm}.");
 
             await _unitOfWork.CompleteAsync();
             await transaction.CommitAsync();
@@ -545,6 +555,7 @@ namespace MedicalApp.API.Services.Implementations
                     Message = message
                 };
                 await _unitOfWork.Notifications.AddAsync(notification);
+                if (appointment.Patient != null) await _firebaseService.SendToUserAsync(appointment.Patient.UserId, title, message);
             }
 
             // Notify clinic admins about the cancellation
@@ -575,6 +586,8 @@ namespace MedicalApp.API.Services.Implementations
                     };
                     await _unitOfWork.Notifications.AddAsync(adminNotif);
                 }
+
+                await _firebaseService.SendToMultipleUsersAsync(cancelClinicAdmins, "Booking cancelled", cancelMsg);
             }
 
             await _unitOfWork.CompleteAsync();
@@ -686,6 +699,7 @@ namespace MedicalApp.API.Services.Implementations
                     Message = $"Your booking with Dr. {appointment.Doctor.User.FullName} has been rescheduled to {newDateStr} at {newTimeStr} (previously {oldDateStr} at {oldTimeStr})."
                 };
                 await _unitOfWork.Notifications.AddAsync(patientNotification);
+                if (appointment.Patient != null) await _firebaseService.SendToUserAsync(appointment.Patient.UserId, "Booking rescheduled", $"Your booking with Dr. {appointment.Doctor.User.FullName} has been rescheduled to {newDateStr} at {newTimeStr}.");
             }
 
             // Send notification to Doctor
@@ -696,6 +710,7 @@ namespace MedicalApp.API.Services.Implementations
                 Message = $"Patient {appointment.Patient?.User?.FullName ?? "walk-in"} has rescheduled their booking to {newDateStr} at {newTimeStr} (previously {oldDateStr} at {oldTimeStr})."
             };
             await _unitOfWork.Notifications.AddAsync(doctorNotification);
+            await _firebaseService.SendToUserAsync(appointment.Doctor.UserId, "Patient booking rescheduled", $"Patient {appointment.Patient?.User?.FullName ?? "walk-in"} has rescheduled their booking to {newDateStr} at {newTimeStr}.");
 
             // Send notification to Clinic Admins
             var clinicAdmins = await _unitOfWork.ClinicAdmins.Query()
@@ -713,6 +728,8 @@ namespace MedicalApp.API.Services.Implementations
                 };
                 await _unitOfWork.Notifications.AddAsync(adminNotification);
             }
+
+            await _firebaseService.SendToMultipleUsersAsync(clinicAdmins, "Patient booking rescheduled", $"Patient {appointment.Patient?.User?.FullName ?? "walk-in"} has rescheduled their booking with Dr. {appointment.Doctor.User.FullName} to {newDateStr} at {newTimeStr}.");
 
             await _unitOfWork.CompleteAsync();
             await transaction.CommitAsync();

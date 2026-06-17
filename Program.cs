@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 using MedicalApp.API.Data;
 using MedicalApp.API.Middleware;
 using MedicalApp.API.Services.Implementations;
@@ -20,6 +22,19 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // ===== HttpClient =====
 builder.Services.AddHttpClient();
+
+// ===== Firebase Admin SDK =====
+var firebaseCredPath = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS")
+    ?? builder.Configuration.GetSection("Firebase")["CredentialPath"];
+if (!string.IsNullOrEmpty(firebaseCredPath) && File.Exists(firebaseCredPath))
+{
+    #pragma warning disable CS0618
+    FirebaseApp.Create(new AppOptions
+    {
+        Credential = GoogleCredential.FromFile(firebaseCredPath)
+    });
+    #pragma warning restore CS0618
+}
 
 // ===== JWT Authentication =====
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -88,6 +103,7 @@ builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<ITelegramOtpService, TelegramOtpService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ICommunityService, CommunityService>();
+builder.Services.AddScoped<IFirebaseNotificationService, FirebaseNotificationService>();
 
 // ===== Hosted Background Services =====
 builder.Services.AddHostedService<AppointmentReminderWorker>();

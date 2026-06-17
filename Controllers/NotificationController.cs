@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MedicalApp.API.Data.Repositories;
+using MedicalApp.API.DTOs.Notification;
+using MedicalApp.API.Helpers;
 using MedicalApp.API.Services.Interfaces;
 
 namespace MedicalApp.API.Controllers
@@ -8,10 +11,12 @@ namespace MedicalApp.API.Controllers
     public class NotificationController : BaseApiController
     {
         private readonly INotificationService _notificationService;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public NotificationController(INotificationService notificationService)
+        public NotificationController(INotificationService notificationService, IUnitOfWork unitOfWork)
         {
             _notificationService = notificationService;
+            _unitOfWork = unitOfWork;
         }
 
         /// <summary>
@@ -46,6 +51,35 @@ namespace MedicalApp.API.Controllers
         {
             var result = await _notificationService.DeleteNotificationAsync(GetUserId(), id);
             return StatusCode(result.StatusCode, result);
+        }
+
+        [HttpPost("fcm-token")]
+        public async Task<IActionResult> RegisterFcmToken([FromBody] FcmTokenDto dto)
+        {
+            var userId = GetUserId();
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user == null)
+                return Unauthorized();
+
+            user.FcmToken = dto.Token;
+            _unitOfWork.Users.Update(user);
+            await _unitOfWork.CompleteAsync();
+
+            return Ok(ApiResponse.Success("FCM token registered"));
+        }
+
+        [HttpDelete("fcm-token")]
+        public async Task<IActionResult> DeleteFcmToken()
+        {
+            var userId = GetUserId();
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user != null)
+            {
+                user.FcmToken = null;
+                _unitOfWork.Users.Update(user);
+                await _unitOfWork.CompleteAsync();
+            }
+            return Ok(ApiResponse.Success("FCM token removed"));
         }
     }
 }
