@@ -53,6 +53,17 @@ namespace MedicalApp.API.Controllers
             return StatusCode(result.StatusCode, result);
         }
 
+        [HttpGet("fcm-token")]
+        public async Task<IActionResult> GetFcmToken()
+        {
+            var userId = GetUserId();
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user == null)
+                return Unauthorized();
+
+            return Ok(ApiResponse<object>.Success(new { token = user.FcmToken }));
+        }
+
         [HttpPost("fcm-token")]
         public async Task<IActionResult> RegisterFcmToken([FromBody] FcmTokenDto dto)
         {
