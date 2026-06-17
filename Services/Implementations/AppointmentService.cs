@@ -117,13 +117,37 @@ namespace MedicalApp.API.Services.Implementations
             await _unitOfWork.Appointments.AddAsync(appointment);
             
             // Create notification for patient
-            var notification = new Notification
+            var patientNotification = new Notification
             {
                 UserId = userId,
                 Title = "Booking confirmed",
                 Message = $"Your booking with Dr. {doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been confirmed. Consultation fee: {consultationFee:N2}."
             };
-            await _unitOfWork.Notifications.AddAsync(notification);
+            await _unitOfWork.Notifications.AddAsync(patientNotification);
+
+            var doctorNotification = new Notification
+            {
+                UserId = doctor.UserId,
+                Title = "New booking",
+                Message = $"You have a new booking with patient {patient.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm}."
+            };
+            await _unitOfWork.Notifications.AddAsync(doctorNotification);
+
+            var clinicAdmins = await _unitOfWork.ClinicAdmins.Query()
+                .Where(ca => ca.ClinicId == schedule.ClinicId)
+                .Select(ca => ca.UserId)
+                .ToListAsync();
+
+            foreach (var adminUserId in clinicAdmins)
+            {
+                var adminNotification = new Notification
+                {
+                    UserId = adminUserId,
+                    Title = "New booking",
+                    Message = $"New booking for Dr. {doctor.User.FullName} with patient {patient.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm}."
+                };
+                await _unitOfWork.Notifications.AddAsync(adminNotification);
+            }
 
             await _unitOfWork.CompleteAsync();
             await transaction.CommitAsync();
@@ -258,13 +282,38 @@ namespace MedicalApp.API.Services.Implementations
             // Create notification for registered patient if applicable
             if (dto.PatientId.HasValue && registeredPatient != null)
             {
-                var notification = new Notification
+                var patientNotification = new Notification
                 {
                     UserId = registeredPatient.UserId,
                     Title = "Booking confirmed",
                     Message = $"Your booking with Dr. {doctor.User.FullName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm} has been confirmed. Consultation fee: {consultationFee:N2}."
                 };
-                await _unitOfWork.Notifications.AddAsync(notification);
+                await _unitOfWork.Notifications.AddAsync(patientNotification);
+            }
+
+            var patientName = registeredPatient?.User?.FullName ?? dto.OfflinePatientName ?? "Walk-in";
+            var docNotification = new Notification
+            {
+                UserId = doctor.UserId,
+                Title = "New booking",
+                Message = $"You have a new booking with patient {patientName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm}."
+            };
+            await _unitOfWork.Notifications.AddAsync(docNotification);
+
+            var clinicAdmins = await _unitOfWork.ClinicAdmins.Query()
+                .Where(ca => ca.ClinicId == schedule.ClinicId)
+                .Select(ca => ca.UserId)
+                .ToListAsync();
+
+            foreach (var adminUserId in clinicAdmins)
+            {
+                var adminNotification = new Notification
+                {
+                    UserId = adminUserId,
+                    Title = "New booking",
+                    Message = $"New booking for Dr. {doctor.User.FullName} with patient {patientName} on {appointment.AppointmentDate:yyyy-MM-dd} at {appointment.StartTime:hh\\:mm}."
+                };
+                await _unitOfWork.Notifications.AddAsync(adminNotification);
             }
 
             await _unitOfWork.CompleteAsync();
@@ -496,6 +545,36 @@ namespace MedicalApp.API.Services.Implementations
                     Message = message
                 };
                 await _unitOfWork.Notifications.AddAsync(notification);
+            }
+
+            // Notify clinic admins about the cancellation
+            var cancelClinicId = await _unitOfWork.DoctorClinics.Query()
+                .Where(dc => dc.DoctorId == appointment.DoctorId && dc.IsActive)
+                .Select(dc => dc.ClinicId)
+                .FirstOrDefaultAsync();
+
+            if (cancelClinicId > 0)
+            {
+                var cancelClinicAdmins = await _unitOfWork.ClinicAdmins.Query()
+                    .Where(ca => ca.ClinicId == cancelClinicId)
+                    .Select(ca => ca.UserId)
+                    .ToListAsync();
+
+                var patientNameStr = appointment.Patient?.User?.FullName ?? appointment.OfflinePatientName ?? "Walk-in";
+                string cancelMsg = user.Role == UserRole.Patient
+                    ? $"Booking with Dr. {appointment.Doctor.User.FullName} for {patientNameStr} has been cancelled by the patient."
+                    : $"Booking with Dr. {appointment.Doctor.User.FullName} for {patientNameStr} has been cancelled.";
+
+                foreach (var adminUserId in cancelClinicAdmins)
+                {
+                    var adminNotif = new Notification
+                    {
+                        UserId = adminUserId,
+                        Title = "Booking cancelled",
+                        Message = cancelMsg
+                    };
+                    await _unitOfWork.Notifications.AddAsync(adminNotif);
+                }
             }
 
             await _unitOfWork.CompleteAsync();

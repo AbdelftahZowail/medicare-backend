@@ -1186,6 +1186,37 @@ namespace MedicalApp.API.Services.Implementations
             };
 
             await _unitOfWork.Notifications.AddAsync(notification);
+
+            var completeClinicId = await _unitOfWork.DoctorClinics.Query()
+                .Where(dc => dc.DoctorId == appointment.DoctorId && dc.IsActive)
+                .Select(dc => dc.ClinicId)
+                .FirstOrDefaultAsync();
+
+            if (completeClinicId > 0)
+            {
+                var doctorName = await _unitOfWork.Doctors.Query()
+                    .Include(d => d.User)
+                    .Where(d => d.Id == appointment.DoctorId)
+                    .Select(d => d.User.FullName)
+                    .FirstOrDefaultAsync() ?? "Doctor";
+
+                var completeClinicAdmins = await _unitOfWork.ClinicAdmins.Query()
+                    .Where(ca => ca.ClinicId == completeClinicId)
+                    .Select(ca => ca.UserId)
+                    .ToListAsync();
+
+                foreach (var adminUserId in completeClinicAdmins)
+                {
+                    var adminNotif = new Notification
+                    {
+                        UserId = adminUserId,
+                        Title = "Consultation completed",
+                        Message = $"Consultation for {appointment.Patient.User.FullName} with Dr. {doctorName} has been completed."
+                    };
+                    await _unitOfWork.Notifications.AddAsync(adminNotif);
+                }
+            }
+
             await _unitOfWork.CompleteAsync();
         }
 
